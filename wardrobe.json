@@ -235,7 +235,7 @@
    "colour": "Grey",
    "size": "M",
    "fit": "",
-   "qty": 3,
+   "qty": 4,
    "acquired": "",
    "retired": false,
    "notes": "3 marked",
@@ -283,7 +283,7 @@
  },
  "audit": {
   "started": "2026-08-03T07:20:00.641Z",
-  "updated": "2026-08-03T20:04:00.902Z",
+  "updated": "2026-08-03T20:16:01.472Z",
   "marks": {
    "Everyday|Vee|Uniqlo|Cotton Blend|66/34|Black|M|": [
     "w",
@@ -343,6 +343,12 @@
     "w",
     "w",
     "u"
+   ],
+   "Pyjamas|Crew|Uniqlo|Cotton Blend|66/34|Grey|M|": [
+    "w",
+    "w",
+    "l",
+    "l"
    ]
   },
   "carry": null,
