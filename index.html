@@ -332,6 +332,96 @@ const Store = {
   }
 };
 
+/* ============================== github sync ============================== */
+const GH = {
+  owner:"a2k-uk", repo:"tshirts", path:"wardrobe.json", branch:"main",
+  tokenKey:"tshirts.ghpat", sha:null,
+  getToken(){ try{ return localStorage.getItem(this.tokenKey) || ""; }catch(e){ return ""; } },
+  setToken(t){ try{ if (t) localStorage.setItem(this.tokenKey, t); else localStorage.removeItem(this.tokenKey); }catch(e){} },
+  get connected(){ return !!this.getToken(); },
+  api(){ return "https://api.github.com/repos/" + this.owner + "/" + this.repo + "/contents/" + this.path; },
+  b64encode(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  },
+  b64decode(str){
+    const bin = atob(str.replace(/\s/g, ""));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  },
+  async pull(){
+    const token = this.getToken(); if (!token) return null;
+    const res = await fetch(this.api() + "?ref=" + this.branch, {
+      headers:{ Authorization:"token " + token, Accept:"application/vnd.github+json" }
+    });
+    if (res.status === 404){ this.sha = null; return null; }
+    if (!res.ok) throw new Error("read failed (" + res.status + ")");
+    const j = await res.json();
+    this.sha = j.sha;
+    return JSON.parse(this.b64decode(j.content));
+  },
+  async push(data){
+    const token = this.getToken(); if (!token) return false;
+    const body = {
+      message:"Update wardrobe data — " + new Date().toISOString(),
+      content:this.b64encode(JSON.stringify(data, null, 1)),
+      branch:this.branch
+    };
+    if (this.sha) body.sha = this.sha;
+    const res = await fetch(this.api(), {
+      method:"PUT",
+      headers:{ Authorization:"token " + token, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
+      body:JSON.stringify(body)
+    });
+    if (res.status === 409){ await this.pull().catch(() => {}); throw new Error("conflict"); }
+    if (!res.ok) throw new Error("write failed (" + res.status + ")");
+    const j = await res.json();
+    this.sha = j.content.sha;
+    return true;
+  }
+};
+let ghStatus = "", ghTimer = null, ghSyncing = false;
+async function ghPush(data){
+  if (ghSyncing) return; ghSyncing = true;
+  try{
+    await GH.push(data);
+    ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }catch(e){
+    ghStatus = e.message === "conflict" ? "Cloud copy changed elsewhere — tap Sync now to refresh"
+      : "Cloud save failed — kept on this device";
+    toast("Cloud sync failed — your change is still saved locally");
+  }
+  ghSyncing = false;
+  if (ui.screen === "details") render();
+}
+async function ghManualSync(){
+  if (!GH.connected) return;
+  toast("Checking GitHub…");
+  try{
+    const cloud = await GH.pull();
+    if (cloud) adoptCloud(cloud);
+    ghStatus = cloud ? "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "Nothing on GitHub yet";
+    toast(cloud ? "Synced with GitHub" : "Nothing on GitHub yet");
+  }catch(e){
+    ghStatus = "Sync failed — " + e.message;
+    toast("Could not reach GitHub");
+  }
+  render();
+}
+function adoptCloud(cloud){
+  const arr = Array.isArray(cloud) ? cloud : cloud.items;
+  items = (arr || []).map(normalise);
+  audit = cloud.audit || null;
+  history = Array.isArray(cloud.history) ? cloud.history : [];
+  if (cloud.ui){
+    if (Array.isArray(cloud.ui.tiers)) ui.tiers = cloud.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
+    if (cloud.ui.view) ui.view = cloud.ui.view;
+  }
+  Store.save({v:3, items, ui:{tiers:ui.tiers, view:ui.view}, audit, history});
+}
+
 /* ============================== colour ============================== */
 const SWATCH = {
   "black":"#1C1C1E","navy":"#26334D","grey":"#9A9A9E","mid-grey":"#818288","dark grey":"#55555A",
@@ -917,6 +1007,18 @@ function screenData(){
     });
     h += '<p class="note">' + list.length + ' entries need attention.</p>';
   }
+  h += '<div class="g1" style="margin-top:28px"><h2>Cloud sync</h2></div>';
+  if (GH.connected){
+    h += '<p class="note" style="margin-top:0">Connected to ' + esc(GH.owner + "/" + GH.repo) +
+      '. Changes save here automatically a few seconds after you make them.' +
+      (ghStatus ? " " + esc(ghStatus) + "." : "") + '</p>' +
+      '<div class="rowbtns"><button id="dGhSync">Sync now</button>' +
+      '<button class="danger" id="dGhDisconnect">Disconnect</button></div>';
+  } else {
+    h += '<p class="note" style="margin-top:0">Not connected — data only lives on this device. ' +
+      'Connect a GitHub personal access token to keep this synced across devices.</p>' +
+      '<div class="rowbtns"><button id="dGhConnect">Connect to GitHub</button></div>';
+  }
   h += '<div class="g1" style="margin-top:28px"><h2>Wardrobe data</h2></div><div class="menu">' +
     '<button id="dBackup">Copy a backup<small>The full JSON, for pasting somewhere safe.</small></button>' +
     '<button id="dMd">Copy as Markdown<small>Rebuilds your original note format.</small></button>' +
@@ -1212,6 +1314,33 @@ function toMarkdown(){
   }
   return lines.join("\n");
 }
+function ghConnectSheet(){
+  openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Connect to GitHub</h3>' +
+    '<button class="done" id="sSave">Save</button></div><div class="f">' +
+    '<label for="ghTok">Personal access token</label>' +
+    '<input id="ghTok" type="password" autocomplete="off" placeholder="github_pat_…" value="' + esc(GH.getToken()) + '"></div>' +
+    '<p class="note">Needs a fine-grained token scoped to just ' + esc(GH.owner + "/" + GH.repo) +
+    ', with Contents set to Read and write. Stored only in this browser — never leaves your device except to talk to GitHub.</p>' +
+    '<div style="height:20px"></div>');
+  el("sBack").onclick = closeSheet;
+  el("sSave").onclick = async () => {
+    const t = el("ghTok").value.trim();
+    if (!t){ toast("Paste a token first"); return; }
+    GH.setToken(t);
+    closeSheet();
+    toast("Connecting…");
+    try{
+      const cloud = await GH.pull();
+      if (cloud){ adoptCloud(cloud); toast("Connected — loaded the cloud copy"); }
+      else { await GH.push({v:3, items, ui:{tiers:ui.tiers, view:ui.view}, audit, history});
+        toast("Connected — this device's copy is now the cloud copy"); }
+      ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    }catch(e){
+      toast("Saved the token, but couldn't reach GitHub: " + e.message);
+    }
+    render();
+  };
+}
 function dataOut(text, label){
   openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>' + label +
     '</h3><button class="done" id="sCopy">Copy</button></div><div class="f"><textarea class="io" id="ioBox" readonly>' +
@@ -1242,9 +1371,13 @@ function dataRestore(){
 
 /* ============================== wiring ============================== */
 async function persist(){
-  const ok = await Store.save({v:3, items:items, ui:{tiers:ui.tiers, view:ui.view},
-    audit:audit, history:history});
+  const data = {v:3, items:items, ui:{tiers:ui.tiers, view:ui.view}, audit:audit, history:history};
+  const ok = await Store.save(data);
   if (!ok) toast("Not saved — copy a backup");
+  if (GH.connected){
+    clearTimeout(ghTimer);
+    ghTimer = setTimeout(() => ghPush(data), 1500);
+  }
 }
 document.addEventListener("click", e => {
   const go = e.target.closest("[data-go]");
@@ -1322,6 +1455,11 @@ document.addEventListener("click", e => {
     items = SEED.map(normalise); audit = null; history = [];
     persist(); render(); toast("Reset"); return;
   }
+  if (e.target.closest("#dGhConnect")){ ghConnectSheet(); return; }
+  if (e.target.closest("#dGhDisconnect")){
+    GH.setToken(""); GH.sha = null; ghStatus = ""; toast("Disconnected"); render(); return;
+  }
+  if (e.target.closest("#dGhSync")){ ghManualSync(); return; }
 });
 document.addEventListener("input", e => {
   if (e.target.id === "q"){
@@ -1333,7 +1471,16 @@ el("scrim").onclick = closeSheet;
 
 (async function start(){
   await Store.init();
-  const saved = await Store.load();
+  let saved = await Store.load();
+  if (GH.connected){
+    try{
+      const cloud = await GH.pull();
+      if (cloud) saved = cloud;
+      ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    }catch(e){
+      ghStatus = "Could not reach GitHub — using this device's saved copy";
+    }
+  }
   const arr = Array.isArray(saved) ? saved : (saved && saved.items);
   items = (arr && arr.length ? arr : SEED).map(normalise);
   if (saved && saved.audit) audit = saved.audit;
