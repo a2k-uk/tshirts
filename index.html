@@ -39,7 +39,11 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .masthead h1{font-family:var(--label);text-transform:uppercase;letter-spacing:.15em;font-size:14px;
   font-weight:600;margin:0}
 .masthead .count{margin-left:auto;font-family:var(--data);font-size:12px;color:var(--mute)}
-.navrow{display:flex;align-items:center;gap:10px;padding:11px 0 10px}
+.navrow{padding:11px 0 10px}
+.navrow-row{display:flex;align-items:center;gap:10px}
+.navrow-row+.navrow-row{margin-top:8px}
+.navrow2{display:none}
+.navrow2.on{display:flex}
 .navstrip{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;
   scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .navstrip::-webkit-scrollbar{display:none}
@@ -52,6 +56,7 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .navrow .sp button{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;
   font-weight:600;color:var(--mute)}
 .navrow .sp button.add{color:var(--ink)}
+.navrow .sp button.toggle{font-size:16px;letter-spacing:0;line-height:1}
 .back{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:600}
 
 main{padding:0 16px}
@@ -449,6 +454,7 @@ let ui = {
   screen:"wardrobe",                       // wardrobe | summary | pyjamas
   tiers:["cut","colour"],
   view:"list",                             // list | tiles
+  navExpanded:false,
   q:"", showFilters:false, auditOutstanding:false, auditPyjamas:false,
   filters:{ cut:[], colour:[], brand:[], fabric:[], cohort:[], size:[] }
 };
@@ -885,28 +891,40 @@ function gaps(i){ return REQUIRED.filter(r => !r.test(i)); }
 function incomplete(){
   return items.filter(i => !i.retired && gaps(i).length);
 }
-function screenDetails(){
+function screenData(){
   const list = incomplete();
-  if (!list.length) return '<div class="empty" style="padding:44px 0"><b>Nothing missing</b>' +
-    'Every shirt has a brand, colour, fabric and size recorded.</div>';
-  let h = '<p class="note" style="margin-top:16px">Shirts with something still to record. Tap one to fill it in. ' +
-          'A blank cohort is not counted here — Legacy is a valid answer.</p>';
-  ["Everyday","Pyjamas"].forEach(cat => {
-    const g = list.filter(i => i.cat === cat);
-    if (!g.length) return;
-    h += '<div class="g1"><h2>' + (cat === "Everyday" ? "Wardrobe" : "Pyjamas") + '</h2>' +
-         '<span class="n">' + sum(g) + '</span></div>';
-    g.slice().sort((a,b) => gaps(b).length - gaps(a).length || colourRank(a.colour) - colourRank(b.colour))
-     .forEach(i => {
-       const lm = leadAndMeta(i);
-       h += '<button class="item" data-id="' + i.id + '">' +
-         swatchHTML(i.colour, i.neck === "Vee", "sw-lg") +
-         '<span class="body"><span class="l1"><span class="lead">' + esc(lm.lead || "Unnamed") + '</span></span>' +
-         '<span class="gapchips">' + gaps(i).map(r => '<i>' + r.label + '</i>').join("") + '</span></span>' +
-         '<span class="qty">' + i.qty + '</span></button>';
-     });
-  });
-  h += '<p class="note">' + list.length + ' entries need attention.</p>';
+  let h;
+  if (!list.length){
+    h = '<div class="empty" style="padding:44px 0"><b>Nothing missing</b>' +
+      'Every shirt has a brand, colour, fabric and size recorded.</div>';
+  } else {
+    h = '<p class="note" style="margin-top:16px">Shirts with something still to record. Tap one to fill it in. ' +
+            'A blank cohort is not counted here — Legacy is a valid answer.</p>';
+    ["Everyday","Pyjamas"].forEach(cat => {
+      const g = list.filter(i => i.cat === cat);
+      if (!g.length) return;
+      h += '<div class="g1"><h2>' + (cat === "Everyday" ? "Wardrobe" : "Pyjamas") + '</h2>' +
+           '<span class="n">' + sum(g) + '</span></div>';
+      g.slice().sort((a,b) => gaps(b).length - gaps(a).length || colourRank(a.colour) - colourRank(b.colour))
+       .forEach(i => {
+         const lm = leadAndMeta(i);
+         h += '<button class="item" data-id="' + i.id + '">' +
+           swatchHTML(i.colour, i.neck === "Vee", "sw-lg") +
+           '<span class="body"><span class="l1"><span class="lead">' + esc(lm.lead || "Unnamed") + '</span></span>' +
+           '<span class="gapchips">' + gaps(i).map(r => '<i>' + r.label + '</i>').join("") + '</span></span>' +
+           '<span class="qty">' + i.qty + '</span></button>';
+       });
+    });
+    h += '<p class="note">' + list.length + ' entries need attention.</p>';
+  }
+  h += '<div class="g1" style="margin-top:28px"><h2>Wardrobe data</h2></div><div class="menu">' +
+    '<button id="dBackup">Copy a backup<small>The full JSON, for pasting somewhere safe.</small></button>' +
+    '<button id="dMd">Copy as Markdown<small>Rebuilds your original note format.</small></button>' +
+    '<button id="dView">Reset the view<small>Back to grouping by cut, then colour, in list view.</small></button>' +
+    '<button id="dRestore">Restore from a backup<small>Paste JSON to replace everything stored.</small></button>' +
+    '<button id="dReset">Start again from the note<small>Reloads the shirts from your original list.</small></button></div>' +
+    '<p class="note">Storage in use: ' + (Store.mode === "local" ? "this browser, on this device" :
+    Store.mode === "host" ? "app storage" : "memory only — nothing will be kept, so copy a backup") + '.</p>';
   return h;
 }
 function screenArchive(){
@@ -1015,8 +1033,8 @@ function screenSummary(){
 function render(){
   const s = ui.screen;
   el("hdrTitle").textContent = s === "summary" ? "Summary" : s === "pyjamas" ? "Pyjamas" :
-    s === "stocktake" ? "Stock-take" : s === "archive" ? "Archive" :
-    s === "details" ? "Missing details" : "T-Shirt Wardrobe";
+    s === "stocktake" ? "Stock-take" : s === "archive" ? "Archived" :
+    s === "details" ? "Data" : "T-Shirt Wardrobe";
   el("hdrCount").textContent = s === "pyjamas" ? sum(pyjamas()) + " shirts"
     : s === "summary" ? sum(wardrobe()) + " shirts"
     : s === "archive" ? sum(archived()) + " retired"
@@ -1024,25 +1042,35 @@ function render(){
     : s === "stocktake" ? (audit ? (tally().total - tally().u) + " of " + tally().total + " placed" : "not started")
     : sum(filtered()) + " shirts";
 
-  const tabs = [
+  const row1 = [
     ["wardrobe","Wardrobe", ""],
-    ["summary","Summary", ""],
     ["stocktake","Stock-take", audit && tally().u ? tally().u : ""],
-    ["details","Details", incomplete().length || ""],
-    ["pyjamas","Pyjamas", ""],
-    ["archive","Archive", ""]
+    ["summary","Summary", ""]
   ];
+  const row2 = [
+    ["pyjamas","Pyjamas", ""],
+    ["archive","Archived", ""],
+    ["details","Data", incomplete().length || ""]
+  ];
+  const tab = t => '<button class="nav' + (t[0] === s ? " here" : "") + '" data-go="' + t[0] + '">' + t[1] +
+      (t[2] ? ' <span class="num">' + t[2] + '</span>' : '') + '</button>';
+  const expanded = ui.navExpanded;
   el("navrow").innerHTML =
-    '<span class="navstrip">' + tabs.map(t =>
-      '<button class="nav' + (t[0] === s ? " here" : "") + '" data-go="' + t[0] + '">' + t[1] +
-      (t[2] ? ' <span class="num">' + t[2] + '</span>' : '') + '</button>').join("") + '</span>' +
-    '<span class="sp">' +
-      (s === "wardrobe" || s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
-      '<button id="btnMenu">•••</button></span>';
+    '<div class="navrow-row">' +
+      '<span class="navstrip">' + row1.map(tab).join("") + '</span>' +
+      '<span class="sp">' +
+        (s === "wardrobe" || s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
+        '<button class="toggle" id="btnMore" aria-expanded="' + expanded + '" aria-label="' +
+        (expanded ? "Hide more tabs" : "Show more tabs") + '">' + (expanded ? "⌃" : "⌄") + '</button>' +
+      '</span>' +
+    '</div>' +
+    '<div class="navrow-row navrow2' + (expanded ? " on" : "") + '">' +
+      '<span class="navstrip">' + row2.map(tab).join("") + '</span>' +
+    '</div>';
 
   el("view").innerHTML = s === "summary" ? screenSummary() : s === "pyjamas" ? screenPyjamas() :
     s === "stocktake" ? screenStocktake() : s === "archive" ? screenArchive() :
-    s === "details" ? screenDetails() : screenWardrobe();
+    s === "details" ? screenData() : screenWardrobe();
 }
 
 /* ============================== sheet ============================== */
@@ -1183,56 +1211,31 @@ function toMarkdown(){
   }
   return lines.join("\n");
 }
-function menu(){
-  let h = '<div class="sheethead"><h3>Wardrobe data</h3><button class="done" id="sCancel">Close</button></div><div class="menu">' +
-    '<button id="mBackup">Copy a backup<small>The full JSON, for pasting somewhere safe.</small></button>' +
-    '<button id="mMd">Copy as Markdown<small>Rebuilds your original note format.</small></button>' +
-    '<button id="mView">Reset the view<small>Back to grouping by cut, then colour, in list view.</small></button>' +
-    '<button id="mRestore">Restore from a backup<small>Paste JSON to replace everything stored.</small></button>' +
-    '<button id="mReset">Start again from the note<small>Reloads the shirts from your original list.</small></button></div>';
-  h += '<p class="note">Storage in use: ' + (Store.mode === "local" ? "this browser, on this device" :
-       Store.mode === "host" ? "app storage" : "memory only — nothing will be kept, so copy a backup") + '.</p><div style="height:20px"></div>';
-  openSheet(h);
-  el("sCancel").onclick = closeSheet;
-  const out = (text, label) => {
-    openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>' + label +
-      '</h3><button class="done" id="sCopy">Copy</button></div><div class="f"><textarea class="io" id="ioBox" readonly>' +
-      esc(text) + '</textarea></div><p class="note">If Copy does nothing, tap inside, select all, and copy by hand.</p><div style="height:20px"></div>');
-    el("sBack").onclick = menu;
-    el("sCopy").onclick = async () => {
-      try{ await navigator.clipboard.writeText(text); toast("Copied"); }
-      catch(e){ el("ioBox").focus(); el("ioBox").select(); toast("Select and copy"); }
-    };
+function dataOut(text, label){
+  openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>' + label +
+    '</h3><button class="done" id="sCopy">Copy</button></div><div class="f"><textarea class="io" id="ioBox" readonly>' +
+    esc(text) + '</textarea></div><p class="note">If Copy does nothing, tap inside, select all, and copy by hand.</p><div style="height:20px"></div>');
+  el("sBack").onclick = closeSheet;
+  el("sCopy").onclick = async () => {
+    try{ await navigator.clipboard.writeText(text); toast("Copied"); }
+    catch(e){ el("ioBox").focus(); el("ioBox").select(); toast("Select and copy"); }
   };
-  el("mBackup").onclick = () => out(JSON.stringify({v:3, items:items, ui:{tiers:ui.tiers, view:ui.view},
-    audit:audit, history:history}, null, 1), "Backup");
-  el("mMd").onclick = () => out(toMarkdown(), "Markdown");
-  el("mView").onclick = async () => {
-    ui.tiers = ["cut","colour"]; ui.view = "list";
-    DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = "";
-    await persist(); closeSheet(); ui.screen = "wardrobe"; render(); toast("View reset");
-  };
-  el("mRestore").onclick = () => {
-    openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Restore</h3>' +
-      '<button class="done" id="sGo">Replace</button></div><div class="f"><label for="ioBox">Paste a backup</label>' +
-      '<textarea class="io" id="ioBox" placeholder="{ … }"></textarea></div>' +
-      '<p class="note">This replaces everything currently in the app.</p><div style="height:20px"></div>');
-    el("sBack").onclick = menu;
-    el("sGo").onclick = async () => {
-      try{
-        const p = JSON.parse(el("ioBox").value);
-        const arr = Array.isArray(p) ? p : p.items;
-        if (!Array.isArray(arr)) throw new Error("bad");
-        items = arr.map(normalise);
-        audit = p.audit || null; history = Array.isArray(p.history) ? p.history : [];
-        await persist(); closeSheet(); render(); toast("Restored");
-      }catch(e){ toast("That is not a valid backup"); }
-    };
-  };
-  el("mReset").onclick = async () => {
-    if (!confirm("Replace everything with the original note?")) return;
-    items = SEED.map(normalise); audit = null; history = [];
-    await persist(); closeSheet(); render(); toast("Reset");
+}
+function dataRestore(){
+  openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Restore</h3>' +
+    '<button class="done" id="sGo">Replace</button></div><div class="f"><label for="ioBox">Paste a backup</label>' +
+    '<textarea class="io" id="ioBox" placeholder="{ … }"></textarea></div>' +
+    '<p class="note">This replaces everything currently in the app.</p><div style="height:20px"></div>');
+  el("sBack").onclick = closeSheet;
+  el("sGo").onclick = async () => {
+    try{
+      const p = JSON.parse(el("ioBox").value);
+      const arr = Array.isArray(p) ? p : p.items;
+      if (!Array.isArray(arr)) throw new Error("bad");
+      items = arr.map(normalise);
+      audit = p.audit || null; history = Array.isArray(p.history) ? p.history : [];
+      await persist(); closeSheet(); render(); toast("Restored");
+    }catch(e){ toast("That is not a valid backup"); }
   };
 }
 
@@ -1301,7 +1304,23 @@ document.addEventListener("click", e => {
     DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = ""; render(); return;
   }
   if (e.target.closest("#btnAdd")){ editItem(null); return; }
-  if (e.target.closest("#btnMenu")){ menu(); return; }
+  if (e.target.closest("#btnMore")){ ui.navExpanded = !ui.navExpanded; render(); return; }
+  if (e.target.closest("#dBackup")){
+    dataOut(JSON.stringify({v:3, items:items, ui:{tiers:ui.tiers, view:ui.view}, audit:audit, history:history}, null, 1), "Backup");
+    return;
+  }
+  if (e.target.closest("#dMd")){ dataOut(toMarkdown(), "Markdown"); return; }
+  if (e.target.closest("#dView")){
+    ui.tiers = ["cut","colour"]; ui.view = "list";
+    DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = "";
+    persist(); ui.screen = "wardrobe"; render(); toast("View reset"); return;
+  }
+  if (e.target.closest("#dRestore")){ dataRestore(); return; }
+  if (e.target.closest("#dReset")){
+    if (!confirm("Replace everything with the original note?")) return;
+    items = SEED.map(normalise); audit = null; history = [];
+    persist(); render(); toast("Reset"); return;
+  }
 });
 document.addEventListener("input", e => {
   if (e.target.id === "q"){
