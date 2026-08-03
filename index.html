@@ -15,14 +15,14 @@
 :root{
   --paper:#ECEDEA; --card:#F6F6F4; --ink:#16181D; --mute:#7C8089;
   --rule:#D6D7D2; --rule-soft:#E3E4E0; --thread:#A63D3D;
-  --sel:#16181D; --sel-ink:#ECEDEA;
+  --sel:#16181D; --sel-ink:#ECEDEA; --go:#3F8F5F;
   --label:'Avenir Next Condensed','Avenir Next','Helvetica Neue',ui-sans-serif,sans-serif;
   --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,ui-sans-serif,sans-serif;
   --data:ui-monospace,'SF Mono',Menlo,'Roboto Mono',monospace;
 }
 @media (prefers-color-scheme: dark){
   :root{--paper:#16181D;--card:#1D2026;--ink:#E7E8E4;--mute:#8B8F98;
-    --rule:#2C3038;--rule-soft:#23262D;--thread:#D97C7C;--sel:#E7E8E4;--sel-ink:#16181D}
+    --rule:#2C3038;--rule-soft:#23262D;--thread:#D97C7C;--sel:#E7E8E4;--sel-ink:#16181D;--go:#5FBF85}
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -39,7 +39,7 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .masthead h1{font-family:var(--label);text-transform:uppercase;letter-spacing:.15em;font-size:14px;
   font-weight:600;margin:0}
 .masthead .count{margin-left:auto;font-family:var(--data);font-size:12px;color:var(--mute)}
-.navrow{display:flex;align-items:center;gap:8px;padding:11px 0 10px}
+.navrow{display:flex;align-items:center;gap:7px;padding:11px 0 10px;flex-wrap:wrap}
 .nav{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:600;
   color:var(--mute);border:1px solid var(--rule);border-radius:2px;padding:5px 9px;background:var(--card)}
 .nav.here{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
@@ -216,9 +216,11 @@ tr.tot td{border-bottom:0;border-top:1px solid var(--ink);font-weight:600}
   border-bottom:1px solid var(--rule-soft)}
 .hist .d{font-size:14.5px}
 .hist .r{margin-left:auto;font-family:var(--data);font-size:13px;color:var(--mute)}
+.bigbtn.go{background:var(--go);border-color:var(--go);color:#0E1A12}
 .bigbtn{width:100%;border:1px solid var(--ink);border-radius:2px;padding:14px;margin-top:16px;
   font-family:var(--label);text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:600;
   background:var(--sel);color:var(--sel-ink)}
+.ghostbtn.danger{color:var(--thread);border-color:var(--thread)}
 .ghostbtn{width:100%;border:1px solid var(--rule);border-radius:2px;padding:13px;margin-top:9px;
   font-family:var(--label);text-transform:uppercase;letter-spacing:.14em;font-size:11.5px;font-weight:600;
   color:var(--mute)}
@@ -353,8 +355,8 @@ function swatchHTML(colour, vee, cls){
   const v = swatchCSS(colour);
   const fill = v.indexOf("#") === 0 ? v : "#9A9A9E";
   return '<svg class="' + cls + ' veesvg" viewBox="0 0 40 40" preserveAspectRatio="none" aria-hidden="true">' +
-    '<path d="M1.2 1.2 H12.5 L20 16 L27.5 1.2 H38.8 V38.8 H1.2 Z" fill="' + fill +
-    '" stroke="rgba(128,128,128,.55)" stroke-width="2.4"/></svg>';
+    '<path d="M1 1 H12.5 L20 16 L27.5 1 H39 V39 H1 Z" fill="' + fill +
+    '" stroke="rgba(128,128,128,.45)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>';
 }
 function family(c){                      // each shade stands on its own
   const k = String(c||"").trim();
@@ -436,7 +438,7 @@ let ui = {
   screen:"wardrobe",                       // wardrobe | summary | pyjamas
   tiers:["cut","colour"],
   view:"list",                             // list | tiles
-  q:"", showFilters:false, showRetired:false, auditOutstanding:false, auditPyjamas:false,
+  q:"", showFilters:false, auditOutstanding:false, auditPyjamas:false,
   filters:{ cut:[], colour:[], brand:[], fabric:[], cohort:[], size:[] }
 };
 
@@ -446,8 +448,9 @@ function el(id){ return document.getElementById(id); }
 function sum(l){ return l.reduce((t,i) => t + i.qty, 0); }
 function uniq(list, fn){ const s = []; list.forEach(i => { const v = fn(i); if (v && s.indexOf(v) < 0) s.push(v); }); return s; }
 
-function wardrobe(){ return items.filter(i => i.cat === "Everyday" && (ui.showRetired || !i.retired)); }
-function pyjamas(){ return items.filter(i => i.cat === "Pyjamas"); }
+function wardrobe(){ return items.filter(i => i.cat === "Everyday" && !i.retired); }
+function pyjamas(){ return items.filter(i => i.cat === "Pyjamas" && !i.retired); }
+function archived(){ return items.filter(i => i.retired); }
 function filtered(){
   return wardrobe().filter(i => {
     for (const k of DIM_KEYS){
@@ -480,7 +483,7 @@ function groupOrder(list, dk){
 
 /* ============================== item rendering ============================== */
 function leadAndMeta(i){
-  const g = k => ui.screen !== "pyjamas" && ui.tiers.indexOf(k) > -1;
+  const g = k => (ui.screen === "wardrobe" || ui.screen === "stocktake") && ui.tiers.indexOf(k) > -1;
   const lead = [];
   if (!g("colour")) lead.push(i.colour || "Unspecified");
   if (!g("brand") && i.brand) lead.push(i.brand);
@@ -488,9 +491,9 @@ function leadAndMeta(i){
   if (i.fabric || i.ffam) meta.push(fabricLabel(i, g("fabric")));
   if (i.fit) meta.push(i.fit);
   if (!g("size") && i.size) meta.push("Size " + i.size);
-  if (!g("cohort")) meta.push(cohort(i.acquired));
+  if (!g("cohort") && !i.merged && ui.screen !== "archive") meta.push(cohort(i.acquired));
   if (i.notes) meta.push(i.notes);
-  if (i.retired) meta.push("Retired");
+  if (i.retired && ui.screen !== "archive") meta.push("Retired");
   if (!lead.length) lead.push(meta.shift() || "Shirt");
   return { lead: lead.join(" — "), meta: meta.join(" · ") };
 }
@@ -573,63 +576,91 @@ function auditScope(){
   return items.filter(i => !i.retired && i.qty > 0 &&
     (i.cat === "Everyday" || (ui.auditPyjamas && i.cat === "Pyjamas")));
 }
-function marks(i){                                  // one letter per physical shirt
-  const raw = (audit && audit.marks[i.id]) || [];
+/* Cohorts are invisible on the hanger, so identical shirts are counted as one line. */
+function auditKey(i){ return [i.cat,i.neck,i.brand,i.ffam,i.fabric,i.colour,i.size,i.fit].join("|"); }
+function auditEntries(){
+  const map = {}, order = [];
+  auditScope().forEach(i => {
+    const k = auditKey(i);
+    if (!map[k]){
+      map[k] = { key:k, id:k, merged:true, ids:[], qty:0, cohorts:[], lastSeen:"", acquired:"",
+        cat:i.cat, neck:i.neck, brand:i.brand, fabric:i.fabric, ffam:i.ffam,
+        colour:i.colour, size:i.size, fit:i.fit, notes:"", retired:false };
+      order.push(map[k]);
+    }
+    const e = map[k];
+    e.ids.push(i.id); e.qty += i.qty;
+    if (i.lastSeen > e.lastSeen) e.lastSeen = i.lastSeen;
+    const c = cohort(i.acquired);
+    if (e.cohorts.indexOf(c) < 0) e.cohorts.push(c);
+  });
+  return order;
+}
+function auditTiers(){ return ui.tiers.filter(k => k !== "cohort"); }
+function marks(e){
+  const raw = (audit && audit.marks[e.key]) || [];
   const out = [];
-  for (let n = 0; n < i.qty; n++) out.push(raw[n] === "w" || raw[n] === "l" ? raw[n] : "u");
+  for (let n = 0; n < e.qty; n++) out.push(raw[n] === "w" || raw[n] === "l" ? raw[n] : "u");
   return out;
 }
 function tally(list){
   const t = {w:0, l:0, u:0, total:0};
-  (list || auditScope()).forEach(i => { marks(i).forEach(m => t[m]++); t.total += i.qty; });
+  (list || auditEntries()).forEach(e => { marks(e).forEach(m => t[m]++); t.total += e.qty; });
   return t;
 }
-function setMark(id, n, val){
+function setMark(key, n, val){
   if (!audit) return;
-  const it = items.find(i => i.id === id); if (!it) return;
-  const m = marks(it); m[n] = val;
-  audit.marks[id] = m;
+  const e = auditEntries().find(x => x.key === key); if (!e) return;
+  const m = marks(e); m[n] = val;
+  audit.marks[key] = m;
   audit.updated = new Date().toISOString();
   persist(); render();
 }
 function bulk(list, val){
-  list.forEach(i => { audit.marks[i.id] = marks(i).map(m => (val === "rest" ? (m === "u" ? "l" : m) : val)); });
+  list.forEach(e => { audit.marks[e.key] = marks(e).map(m => (val === "rest" ? (m === "u" ? "l" : m) : val)); });
   audit.updated = new Date().toISOString();
   persist(); render();
 }
 const NEXT = { u:"w", w:"l", l:"u" };
 let groupBuckets = [];
 
-function auditRow(i){
-  const lm = leadAndMeta(i), m = marks(i);
+function auditRow(e){
+  const lm = leadAndMeta(e), m = marks(e);
   let pips = "";
-  if (i.qty <= 12){
+  if (e.qty <= 12){
     m.forEach((st,n) => {
-      pips += '<button class="pip s-' + st + '" data-aid="' + i.id + '" data-n="' + n +
+      pips += '<button class="pip s-' + st + '" data-aid="' + esc(e.key) + '" data-n="' + n +
               '" aria-label="Shirt ' + (n+1) + ': ' + ST[st] + '"></button>';
     });
   } else {
-    const c = m.filter(x => x === "w").length;
-    pips = '<button class="pip wide" data-aid="' + i.id + '" data-n="-1">' + c + " / " + i.qty + '</button>';
+    pips = '<button class="pip wide" data-aid="' + esc(e.key) + '" data-n="-1">' +
+           m.filter(x => x === "w").length + " / " + e.qty + '</button>';
   }
   const bits = [lm.meta];
-  const carried = audit && audit.carry && audit.carry[i.id];
+  const carried = audit && audit.carry && audit.carry[e.key];
   if (carried) bits.push("Missing since " + fmtDate(audit.carryDate));
-  else if (m.indexOf("u") > -1 && i.lastSeen) bits.push("Last seen " + fmtDate(i.lastSeen));
+  else if (m.indexOf("u") > -1 && e.lastSeen) bits.push("Last seen " + fmtDate(e.lastSeen));
   return '<div class="arow' + (m.indexOf("u") < 0 ? " done" : "") + (carried ? " carried" : "") + '">' +
-    swatchHTML(i.colour, i.neck === "Vee", "sw-lg") +
+    swatchHTML(e.colour, e.neck === "Vee", "sw-lg") +
     '<span class="body"><span class="l1">' + esc(lm.lead) + '</span>' +
     '<span class="l2">' + esc(bits.filter(Boolean).join(" · ")) + '</span></span>' +
     '<span class="pips">' + pips + '</span></div>';
 }
+function startAudit(carryFrom){
+  audit = { started:new Date().toISOString(), updated:"", marks:{},
+            carry:(carryFrom && carryFrom.u ? carryFrom.carry : null),
+            carryDate:(carryFrom ? carryFrom.finished : "") };
+}
 function screenStocktake(){
   let h = "";
   if (!audit){
-    h += '<div class="empty" style="padding:34px 0 10px"><b>No stock-take running</b>' +
+    h += '<div class="empty" style="padding:32px 0 10px"><b>No stock-take running</b>' +
          'Work through a drawer at a time. Anything you cannot place stays unknown.</div>';
-    h += '<button class="bigbtn" id="stStart">Start a stock-take</button>';
+    h += '<button class="bigbtn go" id="stStart">Start a stock-take</button>';
+    if (history.length)
+      h += '<p class="note" style="text-align:center">Or reopen the last one below to carry on where you left off.</p>';
   } else {
-    const scope = auditScope(), t = tally(scope);
+    const entries = auditEntries(), t = tally(entries);
     const pw = t.total ? t.w / t.total * 100 : 0, pl = t.total ? t.l / t.total * 100 : 0;
     h += '<div class="prog"><div class="bar"><i style="width:' + pw.toFixed(1) + '%"></i>' +
          '<u style="left:' + pw.toFixed(1) + '%;width:' + pl.toFixed(1) + '%"></u></div>' +
@@ -640,20 +671,19 @@ function screenStocktake(){
          '<span><i class="pip s-l"></i>Laundry</span><span><i class="pip s-u"></i>Unknown</span>' +
          '<span class="tapnote">Tap to cycle</span></div></div>';
     h += '<p class="note">Started ' + fmtDate(audit.started) +
-         (audit.updated ? ' · last touched ' + fmtDate(audit.updated) : '') + '</p>';
+         (audit.updated ? ' · last touched ' + fmtDate(audit.updated) : '') +
+         '. Progress saves as you go — you can leave and come back.</p>';
     h += '<div class="toolbar" style="flex-wrap:wrap;gap:6px"><button class="chip" aria-pressed="' + ui.auditOutstanding +
          '" id="stOut">Only unknown</button>' +
          '<button class="chip" aria-pressed="' + ui.auditPyjamas + '" id="stPy">Include pyjamas</button>' +
          '<button class="chip" id="stRest">Rest to laundry</button>' +
          '<button class="chip" id="stNone">Clear</button></div>';
-    const list = ui.auditOutstanding ? scope.filter(i => marks(i).indexOf("u") > -1) : scope;
+    const list = ui.auditOutstanding ? entries.filter(e => marks(e).indexOf("u") > -1) : entries;
     groupBuckets = [];
-    if (!list.length){
-      h += '<div class="empty"><b>Everything is placed</b>No shirt is unaccounted for.</div>';
-    } else {
-      h += renderGroups(list, ui.tiers, 0);
-    }
-    h += '<button class="bigbtn" id="stFinish">Finish and save</button>';
+    h += list.length
+      ? renderGroups(list, auditTiers(), 0)
+      : '<div class="empty"><b>Everything is placed</b>No shirt is unaccounted for.</div>';
+    h += '<button class="bigbtn go" id="stFinish">Finish and file</button>';
     h += '<button class="ghostbtn" id="stAbandon">Abandon this stock-take</button>';
   }
   if (history.length){
@@ -670,7 +700,7 @@ function histSheet(n){
   const a = history[n];
   let h = '<div class="sheethead"><h3>' + fmtDate(a.finished) + '</h3><button class="done" id="sCancel">Close</button></div>';
   h += '<p class="note">' + a.w + ' in the drawer, ' + a.l + ' in the wash, ' + a.u + ' unknown, out of ' + a.total + '.</p>';
-  if (a.missing.length){
+  if (a.missing && a.missing.length){
     h += '<div class="g1"><h2>Unknown</h2><span class="n">' + a.u + '</span></div>';
     a.missing.forEach(m => {
       h += '<div class="arow">' + swatchHTML(m.colour, m.vee, "sw-lg") +
@@ -678,24 +708,45 @@ function histSheet(n){
            '<span class="qty num" style="font-size:16px">' + m.n + '</span></div>';
     });
   }
-  h += '<div style="height:24px"></div>';
+  h += '<button class="bigbtn" id="hReopen">Reopen and carry on</button>';
+  h += '<button class="ghostbtn danger" id="hDelete">Delete this stock-take</button>';
+  h += '<p class="hint">Reopening takes it back out of the archive; file it again when you are done.</p>';
+  h += '<div style="height:20px"></div>';
   openSheet(h);
   el("sCancel").onclick = closeSheet;
+  el("hReopen").onclick = async () => {
+    if (audit && !confirm("A stock-take is already running. Throw that one away and reopen this?")) return;
+    audit = { started:a.started, updated:a.finished, marks:a.marks || {}, carry:a.carry || null, carryDate:a.carryDate || "" };
+    history.splice(n,1);
+    ui.screen = "stocktake";
+    await persist(); closeSheet(); render(); toast("Reopened");
+  };
+  el("hDelete").onclick = async () => {
+    if (!confirm("Delete this stock-take record?")) return;
+    history.splice(n,1);
+    await persist(); closeSheet(); render(); toast("Deleted");
+  };
 }
 function finishAudit(){
-  const scope = auditScope(), t = tally(scope);
-  if (t.u && !confirm(t.u + " shirt" + (t.u === 1 ? " is" : "s are") + " still unknown. Save the stock-take anyway?")) return;
+  const entries = auditEntries(), t = tally(entries);
+  if (t.u && !confirm(t.u + " shirt" + (t.u === 1 ? " is" : "s are") + " still unknown. File the stock-take anyway?")) return;
   const when = new Date().toISOString();
-  const carry = {};
-  const missing = scope.filter(i => marks(i).indexOf("u") > -1).map(i => {
-    const lm = leadAndMeta(i), n = marks(i).filter(m => m === "u").length;
-    carry[i.id] = n;
-    return { id:i.id, colour:i.colour, vee:i.neck === "Vee", lead:lm.lead, meta:lm.meta, n:n };
+  const carry = {}, seenIds = {};
+  const missing = [];
+  entries.forEach(e => {
+    const m = marks(e);
+    if (m.some(x => x !== "u")) e.ids.forEach(id => seenIds[id] = 1);
+    const n = m.filter(x => x === "u").length;
+    if (n){
+      const lm = leadAndMeta(e);
+      carry[e.key] = n;
+      missing.push({ key:e.key, colour:e.colour, vee:e.neck === "Vee", lead:lm.lead, meta:lm.meta, n:n });
+    }
   });
   history.unshift({ finished:when, started:audit.started, total:t.total, w:t.w, l:t.l, u:t.u,
-                    missing:missing, carry:carry });
-  history = history.slice(0,12);
-  items = items.map(i => marks(i).some(m => m !== "u") ? Object.assign({}, i, {lastSeen:when}) : i);
+                    missing:missing, carry:carry, carryDate:audit.carryDate || "", marks:audit.marks });
+  history = history.slice(0,24);
+  items = items.map(i => seenIds[i.id] ? Object.assign({}, i, {lastSeen:when}) : i);
   audit = null; ui.auditOutstanding = false;
   persist(); render();
   toast(t.u ? t.u + " still unknown" : "All " + t.total + " placed");
@@ -741,8 +792,7 @@ function filterPanel(){
     });
     h += '</div></div>';
   });
-  h += '<div class="filtertoggle"><button class="chip" aria-pressed="' + ui.showRetired + '" id="btnRetired">Show retired</button>' +
-       (filterCount() ? '<button class="clear" id="btnClear">Clear</button>' : '') + '</div></div>';
+  h += (filterCount() ? '<div class="filtertoggle"><button class="clear" id="btnClear">Clear</button></div>' : '') + '</div>';
   return h;
 }
 function screenWardrobe(){
@@ -755,6 +805,22 @@ function screenWardrobe(){
     h += renderGroups(list, ui.tiers, 0);
     h += '<p class="note">' + sum(list) + ' shirts across ' + list.length + ' entries. Tap any shirt to edit it.</p>';
   }
+  return h;
+}
+function screenArchive(){
+  const list = archived();
+  if (!list.length) return '<div class="empty"><b>Nothing archived yet</b>' +
+    'Retired shirts are kept here — a record of everything you have owned, and a way back if you retire one by mistake.</div>';
+  let h = '<p class="note" style="margin-top:16px">Shirts you have retired. Tap one and choose ' +
+          '\u201CRestore\u201D to put it back. Nothing here counts towards any total.</p>';
+  const byCohort = uniq(list, i => i.acquired || "Legacy")
+    .sort((a,b) => (b === "Legacy" ? "0000-00" : b).localeCompare(a === "Legacy" ? "0000-00" : a));
+  byCohort.forEach(k => {
+    const g = list.filter(i => (i.acquired || "Legacy") === k);
+    h += '<div class="g1"><h2>' + esc(k === "Legacy" ? "Legacy" : cohort(k)) + '</h2><span class="n">' + sum(g) + '</span></div>';
+    h += g.slice().sort((a,b) => colourRank(a.colour) - colourRank(b.colour)).map(itemRow).join("");
+  });
+  h += '<p class="note">' + sum(list) + ' shirts retired.</p>';
   return h;
 }
 function screenPyjamas(){
@@ -787,7 +853,7 @@ function screenSummary(){
   });
   h += '<div class="legend"><span><i></i>Crew</span><span>' +
     '<svg class="v" viewBox="0 0 40 40" preserveAspectRatio="none" aria-hidden="true">' +
-    '<path d="M1.2 1.2 H12.5 L20 16 L27.5 1.2 H38.8 V38.8 H1.2 Z" fill="none" stroke="currentColor" stroke-width="2.4"/>' +
+    '<path d="M1 1 H12.5 L20 16 L27.5 1 H39 V39 H1 Z" fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
     '</svg>Vee</span></div></section>';
 
   h += '<section><p class="eyebrow">Colour against cut</p><table><thead><tr><th class="k">Colour</th>';
@@ -847,9 +913,10 @@ function screenSummary(){
 function render(){
   const s = ui.screen;
   el("hdrTitle").textContent = s === "summary" ? "Summary" : s === "pyjamas" ? "Pyjamas" :
-    s === "stocktake" ? "Stock-take" : "T-Shirt Wardrobe";
+    s === "stocktake" ? "Stock-take" : s === "archive" ? "Archive" : "T-Shirt Wardrobe";
   el("hdrCount").textContent = s === "pyjamas" ? sum(pyjamas()) + " shirts"
     : s === "summary" ? sum(wardrobe()) + " shirts"
+    : s === "archive" ? sum(archived()) + " retired"
     : s === "stocktake" ? (audit ? (tally().total - tally().u) + " of " + tally().total + " placed" : "not started")
     : sum(filtered()) + " shirts";
 
@@ -858,13 +925,14 @@ function render(){
       '<button class="nav" data-go="stocktake">Stock-take' +
       (audit && tally().u ? ' <span class="num">' + tally().u + '</span>' : '') + '</button>' +
       '<button class="nav" data-go="pyjamas">Pyjamas</button>' +
+      '<button class="nav" data-go="archive">Archive</button>' +
       '<span class="sp"><button class="add" id="btnAdd">+ Add</button><button id="btnMenu">•••</button></span>'
     : '<button class="back" data-go="wardrobe">‹ Wardrobe</button>' +
       '<span class="sp">' + (s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
       '<button id="btnMenu">•••</button></span>';
 
   el("view").innerHTML = s === "summary" ? screenSummary() : s === "pyjamas" ? screenPyjamas() :
-    s === "stocktake" ? screenStocktake() : screenWardrobe();
+    s === "stocktake" ? screenStocktake() : s === "archive" ? screenArchive() : screenWardrobe();
 }
 
 /* ============================== sheet ============================== */
@@ -903,23 +971,24 @@ function editItem(id){
        field("Colour", "f_colour", it.colour, "text", "Navy", "dlColour") + '</div>';
   h += '<div class="f2">' + field("Brand", "f_brand", it.brand, "text", "Uniqlo", "dlBrand") +
        field("Size", "f_size", it.size, "text", "S") + '</div>';
-  h += '<div class="f2">' + field("Fabric", "f_fabric", it.fabric, "text", "66/34", "dlFabric") +
-       selectF("Fabric family", "f_ffam", FABRIC_FAMILIES, it.ffam) + '</div>';
-  h += '<p class="hint">The family is set from the fabric name where it is recognised — override it here for anything new.</p>';
+  h += '<div class="f2">' + selectF("Fabric family", "f_ffam", FABRIC_FAMILIES, it.ffam) +
+       field("Fabric", "f_fabric", it.fabric, "text", "66/34", "dlFabric") + '</div>';
   h += '<div class="f2">' + field("Fit", "f_fit", it.fit, "text", "Slim") +
        field("Cohort", "f_acq", it.acquired, "month", "2026-07") + '</div>';
   h += '<p class="hint">' + (it.acquired || !isNew
     ? "Legacy shirts keep their blank date; anything dated stays dated."
     : "New shirts need a cohort — the month you bought them.") + '</p>';
-  h += field("Notes", "f_notes", it.notes, "text", "3 marked");
+  h += field("Notes", "f_notes", it.notes, "text", "");
 
   if (!isNew){
     h += '<div class="rowbtns">' +
       '<button id="bCat">' + (it.cat === "Pyjamas" ? "Back to the wardrobe" : "Demote to pyjamas") + '</button>' +
-      (it.cat === "Everyday" ? '<button id="bRetire">' + (it.retired ? "Un-retire" : "Retire") + '</button>' : '') +
-      '</div><div class="rowbtns"><button class="danger" id="bDel">Delete</button></div>';
+      '<button id="bRetire">' + (it.retired ? "Restore from archive" : "Retire to archive") + '</button>' +
+      '</div><div class="rowbtns"><button class="danger" id="bDel">Delete for good</button></div>';
   }
-  h += '<div style="height:20px"></div>';
+  h += '<button class="bigbtn go" id="sSave2">' + (isNew ? "Add to the wardrobe" : "Save changes") + '</button>';
+  h += '<button class="ghostbtn" id="sCancel2">Cancel</button>';
+  h += '<div style="height:14px"></div>';
   openSheet(h);
 
   let qty = it.qty, autoFam = true;
@@ -929,7 +998,8 @@ function editItem(id){
   el("f_fabric").addEventListener("input", e => { if (autoFam) el("f_ffam").value = fabricFamily(e.target.value); });
   el("f_ffam").addEventListener("change", () => { autoFam = false; });
   el("sCancel").onclick = closeSheet;
-  el("sSave").onclick = async () => {
+  el("sCancel2").onclick = closeSheet;
+  el("sSave").onclick = el("sSave2").onclick = async () => {
     if (!el("f_acq").value && (isNew || it.acquired)){
       toast(isNew ? "Give it a cohort — the month you bought it" : "Only the original legacy shirts can have no cohort");
       el("f_acq").focus(); return;
@@ -947,9 +1017,10 @@ function editItem(id){
       items = items.map(i => i.id === it.id ? Object.assign({}, i, {cat:to, retired:false}) : i);
       await persist(); closeSheet(); render(); toast(to === "Pyjamas" ? "Moved to pyjamas" : "Back in the wardrobe");
     };
-    if (el("bRetire")) el("bRetire").onclick = async () => {
+    el("bRetire").onclick = async () => {
       items = items.map(i => i.id === it.id ? Object.assign({}, i, {retired:!i.retired}) : i);
-      await persist(); closeSheet(); render(); toast(it.retired ? "Un-retired" : "Retired");
+      await persist(); closeSheet(); render();
+      toast(it.retired ? "Restored" : "Retired — find it under Archive");
     };
     el("bDel").onclick = async () => {
       if (!confirm("Delete this entry for good?")) return;
@@ -1061,18 +1132,18 @@ document.addEventListener("click", e => {
   }
   const pip = e.target.closest(".pip[data-aid]");
   if (pip){
-    const id = pip.dataset.aid, n = +pip.dataset.n, item = items.find(i => i.id === id);
-    const m = marks(item);
-    if (n < 0) bulk([item], NEXT[m[0]]);            // wide control cycles the whole entry
-    else setMark(id, n, NEXT[m[n]]);
+    const key = pip.dataset.aid, n = +pip.dataset.n;
+    const e = auditEntries().find(x => x.key === key); if (!e) return;
+    const m = marks(e);
+    if (n < 0) bulk([e], NEXT[m[0]]);               // wide control cycles the whole entry
+    else setMark(key, n, NEXT[m[n]]);
     return;
   }
   const hb = e.target.closest("[data-hist]");
   if (hb){ histSheet(+hb.dataset.hist); return; }
   if (e.target.closest("#stStart")){
     const last = history[0];
-    audit = { started:new Date().toISOString(), updated:"", marks:{},
-              carry:(last && last.u ? last.carry : null), carryDate:(last ? last.finished : "") };
+    startAudit(last);
     ui.auditOutstanding = false; persist(); render();
     if (audit.carry) toast(last.u + " carried over from last time");
     return;
@@ -1080,9 +1151,9 @@ document.addEventListener("click", e => {
   if (e.target.closest("#stOut")){ ui.auditOutstanding = !ui.auditOutstanding; render(); return; }
   if (e.target.closest("#stPy")){ ui.auditPyjamas = !ui.auditPyjamas; render(); return; }
   if (e.target.closest("#stRest")){
-    bulk(auditScope(), "rest"); toast("Everything unknown sent to the wash"); return;
+    bulk(auditEntries(), "rest"); toast("Everything unknown sent to the wash"); return;
   }
-  if (e.target.closest("#stNone")){ bulk(auditScope(), "u"); toast("Cleared"); return; }
+  if (e.target.closest("#stNone")){ bulk(auditEntries(), "u"); toast("Cleared"); return; }
   const gall = e.target.closest("[data-gall]");
   if (gall){
     const b = groupBuckets[+gall.dataset.gall] || [];
@@ -1096,7 +1167,6 @@ document.addEventListener("click", e => {
   const it = e.target.closest("[data-id]");
   if (it){ editItem(it.dataset.id); return; }
   if (e.target.closest("#btnFilters")){ ui.showFilters = !ui.showFilters; render(); return; }
-  if (e.target.closest("#btnRetired")){ ui.showRetired = !ui.showRetired; render(); return; }
   if (e.target.closest("#btnClear")){
     DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = ""; render(); return;
   }
