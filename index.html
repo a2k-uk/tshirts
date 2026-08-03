@@ -994,7 +994,7 @@ function screenData(){
     ["Everyday","Pyjamas"].forEach(cat => {
       const g = list.filter(i => i.cat === cat);
       if (!g.length) return;
-      h += '<div class="g1"><h2>' + (cat === "Everyday" ? "Wardrobe" : "Pyjamas") + '</h2>' +
+      h += '<div class="g2"><h3>' + (cat === "Everyday" ? "Wardrobe" : "Pyjamas") + '</h3>' +
            '<span class="n">' + sum(g) + '</span></div>';
       g.slice().sort((a,b) => gaps(b).length - gaps(a).length || colourRank(a.colour) - colourRank(b.colour))
        .forEach(i => {
@@ -1024,7 +1024,8 @@ function screenData(){
     '<button id="dCsv">Export to CSV<small>A row per shirt, for opening in a spreadsheet.</small></button>' +
     '<button id="dRestoreStock">Restore from stock-take<small>Set the wardrobe back to how it looked right after an earlier stock-take.</small></button></div>' +
     '<p class="note">Storage in use: ' + (Store.mode === "local" ? "this browser, on this device" :
-    Store.mode === "host" ? "app storage" : "memory only — nothing will be kept") + '.</p>';
+    Store.mode === "host" ? "app storage" : "memory only — nothing will be kept") +
+    (GH.connected ? ", synced to " + esc(GH.owner + "/" + GH.repo) + " on GitHub" : "") + '.</p>';
   return h;
 }
 function screenArchive(){
