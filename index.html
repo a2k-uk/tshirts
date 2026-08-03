@@ -39,11 +39,16 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .masthead h1{font-family:var(--label);text-transform:uppercase;letter-spacing:.15em;font-size:14px;
   font-weight:600;margin:0}
 .masthead .count{margin-left:auto;font-family:var(--data);font-size:12px;color:var(--mute)}
-.navrow{display:flex;align-items:center;gap:7px;padding:11px 0 10px;flex-wrap:wrap}
-.nav{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:600;
-  color:var(--mute);border:1px solid var(--rule);border-radius:2px;padding:5px 9px;background:var(--card)}
+.navrow{display:flex;align-items:center;gap:10px;padding:11px 0 10px}
+.navstrip{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.navstrip::-webkit-scrollbar{display:none}
+.nav{font-family:var(--label);text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:600;
+  color:var(--mute);border:1px solid var(--rule);border-radius:2px;padding:5px 9px;background:var(--card);
+  flex:none;white-space:nowrap}
+.nav .num{opacity:.7;font-size:10px}
 .nav.here{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
-.navrow .sp{margin-left:auto;display:flex;gap:16px;align-items:center}
+.navrow .sp{flex:none;display:flex;gap:14px;align-items:center}
 .navrow .sp button{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;
   font-weight:600;color:var(--mute)}
 .navrow .sp button.add{color:var(--ink)}
@@ -186,7 +191,8 @@ tr.tot td{border-bottom:0;border-top:1px solid var(--ink);font-weight:600}
 .prog .figs .out{margin-left:auto;color:var(--thread)}
 .prog .figs .out b{color:var(--thread)}
 .arow{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule-soft)}
-.arow .body{flex:1;min-width:0}
+.arow .body{flex:1;min-width:0;text-align:left}
+button.body{background:none;border:0;padding:0}
 .arow .l1{display:block;font-size:14.5px;letter-spacing:-.01em;font-weight:600}
 .arow .l2{display:block;font-family:var(--label);text-transform:uppercase;letter-spacing:.1em;
   font-size:10px;color:var(--mute);margin-top:3px;font-weight:600}
@@ -202,6 +208,10 @@ tr.tot td{border-bottom:0;border-top:1px solid var(--ink);font-weight:600}
   font-weight:600;color:var(--mute);border:1px solid var(--rule);border-radius:2px;padding:3px 7px;
   margin-left:10px;align-self:center}
 .arow.carried .l2{color:var(--thread)}
+.gapchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.gapchips i{font-family:var(--label);text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;
+  font-weight:600;font-style:normal;color:var(--thread);border:1px solid var(--thread);
+  border-radius:2px;padding:2px 6px}
 .pips{display:flex;gap:4px;flex:none;flex-wrap:wrap;justify-content:flex-end;max-width:132px}
 .pip{width:26px;height:30px;display:flex;align-items:center;justify-content:center}
 .pip::before{content:"";width:17px;height:17px;box-shadow:inset 0 0 0 1.5px var(--rule);
@@ -230,7 +240,8 @@ tr.tot td{border-bottom:0;border-top:1px solid var(--ink);font-weight:600}
   transition:opacity .18s ease}
 .scrim.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--paper);border-top:1px solid var(--rule);
-  border-radius:10px 10px 0 0;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  border-radius:10px 10px 0 0;max-height:88vh;max-height:88dvh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:0 16px calc(20px + env(safe-area-inset-bottom));
   transform:translateY(101%);transition:transform .22s cubic-bezier(.32,.72,0,1)}
 .sheet.on{transform:translateY(0)}
@@ -569,7 +580,9 @@ function renderGroups(list, tiers, depth){
 /* ============================== stock-take ============================== */
 const ST = { u:"Unknown", w:"Wardrobe", l:"Laundry" };
 function fmtDate(iso){
+  if (!iso) return "";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
   return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
 function auditScope(){
@@ -638,13 +651,67 @@ function auditRow(e){
   }
   const bits = [lm.meta];
   const carried = audit && audit.carry && audit.carry[e.key];
-  if (carried) bits.push("Missing since " + fmtDate(audit.carryDate));
+  if (carried) bits.push(fmtDate(audit.carryDate) ? "Missing since " + fmtDate(audit.carryDate)
+                                                    : "Missing at the last stock-take");
   else if (m.indexOf("u") > -1 && e.lastSeen) bits.push("Last seen " + fmtDate(e.lastSeen));
   return '<div class="arow' + (m.indexOf("u") < 0 ? " done" : "") + (carried ? " carried" : "") + '">' +
     swatchHTML(e.colour, e.neck === "Vee", "sw-lg") +
-    '<span class="body"><span class="l1">' + esc(lm.lead) + '</span>' +
-    '<span class="l2">' + esc(bits.filter(Boolean).join(" · ")) + '</span></span>' +
+    '<button class="body" data-adj="' + esc(e.key) + '"><span class="l1">' + esc(lm.lead) + '</span>' +
+    '<span class="l2">' + esc(bits.filter(Boolean).join(" · ")) + '</span></button>' +
     '<span class="pips">' + pips + '</span></div>';
+}
+function adjustSheet(key){
+  const e = auditEntries().find(x => x.key === key); if (!e) return;
+  const parts = e.ids.map(id => items.find(i => i.id === id))
+    .sort((a,b) => (b.acquired || "0000-00").localeCompare(a.acquired || "0000-00"));
+  const lm = leadAndMeta(e);
+  let h = '<div class="sheethead"><button class="cancel" id="sCancel">Cancel</button><h3>Fix the count</h3></div>';
+  h += '<div class="arow" style="border-bottom:0">' + swatchHTML(e.colour, e.neck === "Vee", "sw-lg") +
+       '<span class="body"><span class="l1">' + esc([e.colour, e.brand].filter(Boolean).join(" — ")) + '</span>' +
+       '<span class="l2">' + esc(lm.meta) + '</span></span></div>';
+  h += '<div class="f"><label>How many do you actually have</label><div class="stepper">' +
+       '<button id="aMinus" aria-label="One fewer">−</button><span class="v" id="aVal">' + e.qty + '</span>' +
+       '<button id="aPlus" aria-label="One more">+</button></div></div>';
+  if (parts.length > 1){
+    h += '<div class="f"><label for="a_coh">Apply the change to</label><select id="a_coh">' +
+      parts.map(i => '<option value="' + i.id + '">' + esc(cohort(i.acquired)) + ' — currently ' + i.qty + '</option>').join("") +
+      '</select></div>';
+    h += '<p class="hint">This line covers ' + parts.length + ' cohorts, so pick which one gains or loses shirts.</p>';
+  }
+  h += '<button class="bigbtn go" id="aSave">Save the count</button>';
+  h += '<button class="ghostbtn danger" id="aDrop">Remove this line entirely</button>';
+  h += '<div style="height:14px"></div>';
+  openSheet(h);
+
+  let qty = e.qty;
+  const setQ = v => { qty = Math.max(0, v); el("aVal").textContent = qty; };
+  el("aMinus").onclick = () => setQ(qty - 1);
+  el("aPlus").onclick  = () => setQ(qty + 1);
+  el("sCancel").onclick = closeSheet;
+  el("aSave").onclick = async () => {
+    let delta = qty - e.qty;
+    if (delta){
+      const pick = parts.length > 1 ? el("a_coh").value : parts[0].id;
+      const order = [items.find(i => i.id === pick)].concat(parts.filter(i => i.id !== pick));
+      const next = {};
+      order.forEach(i => { next[i.id] = i.qty; });
+      if (delta > 0){ next[pick] += delta; }
+      else {
+        let owed = -delta;
+        order.forEach(i => { const take = Math.min(owed, next[i.id]); next[i.id] -= take; owed -= take; });
+      }
+      items = items.map(i => next[i.id] === undefined ? i : Object.assign({}, i, {qty:next[i.id]}));
+      await persist();
+    }
+    closeSheet(); render();
+    toast(delta > 0 ? "Added " + delta : delta < 0 ? "Removed " + (-delta) : "Unchanged");
+  };
+  el("aDrop").onclick = async () => {
+    if (!confirm("Remove these " + e.qty + " shirts from the wardrobe entirely?")) return;
+    const gone = {}; e.ids.forEach(id => gone[id] = 1);
+    items = items.filter(i => !gone[i.id]);
+    await persist(); closeSheet(); render(); toast("Removed");
+  };
 }
 function startAudit(carryFrom){
   audit = { started:new Date().toISOString(), updated:"", marks:{},
@@ -669,14 +736,13 @@ function screenStocktake(){
          '<span class="out"><b>' + t.u + '</b> unknown</span></div>' +
          '<div class="pipkey"><span><i class="pip s-w"></i>Wardrobe</span>' +
          '<span><i class="pip s-l"></i>Laundry</span><span><i class="pip s-u"></i>Unknown</span>' +
-         '<span class="tapnote">Tap to cycle</span></div></div>';
+         '<span class="tapnote">Tap a square to cycle · tap the name to fix a count</span></div></div>';
     h += '<p class="note">Started ' + fmtDate(audit.started) +
          (audit.updated ? ' · last touched ' + fmtDate(audit.updated) : '') +
          '. Progress saves as you go — you can leave and come back.</p>';
     h += '<div class="toolbar" style="flex-wrap:wrap;gap:6px"><button class="chip" aria-pressed="' + ui.auditOutstanding +
          '" id="stOut">Only unknown</button>' +
          '<button class="chip" aria-pressed="' + ui.auditPyjamas + '" id="stPy">Include pyjamas</button>' +
-         '<button class="chip" id="stRest">Rest to laundry</button>' +
          '<button class="chip" id="stNone">Clear</button></div>';
     const list = ui.auditOutstanding ? entries.filter(e => marks(e).indexOf("u") > -1) : entries;
     groupBuckets = [];
@@ -716,7 +782,8 @@ function histSheet(n){
   el("sCancel").onclick = closeSheet;
   el("hReopen").onclick = async () => {
     if (audit && !confirm("A stock-take is already running. Throw that one away and reopen this?")) return;
-    audit = { started:a.started, updated:a.finished, marks:a.marks || {}, carry:a.carry || null, carryDate:a.carryDate || "" };
+    audit = { started:a.started, updated:a.finished, marks:a.marks || {},
+              carry:a.startCarry || null, carryDate:a.startCarryDate || "" };
     history.splice(n,1);
     ui.screen = "stocktake";
     await persist(); closeSheet(); render(); toast("Reopened");
@@ -744,7 +811,8 @@ function finishAudit(){
     }
   });
   history.unshift({ finished:when, started:audit.started, total:t.total, w:t.w, l:t.l, u:t.u,
-                    missing:missing, carry:carry, carryDate:audit.carryDate || "", marks:audit.marks });
+                    missing:missing, carry:carry, marks:audit.marks,
+                    startCarry:audit.carry || null, startCarryDate:audit.carryDate || "" });
   history = history.slice(0,24);
   items = items.map(i => seenIds[i.id] ? Object.assign({}, i, {lastSeen:when}) : i);
   audit = null; ui.auditOutstanding = false;
@@ -805,6 +873,40 @@ function screenWardrobe(){
     h += renderGroups(list, ui.tiers, 0);
     h += '<p class="note">' + sum(list) + ' shirts across ' + list.length + ' entries. Tap any shirt to edit it.</p>';
   }
+  return h;
+}
+const REQUIRED = [
+  {k:"brand",  label:"Brand",   test:i => !!i.brand},
+  {k:"colour", label:"Colour",  test:i => !!i.colour},
+  {k:"fabric", label:"Fabric",  test:i => !!i.fabric},
+  {k:"size",   label:"Size",    test:i => !!i.size}
+];
+function gaps(i){ return REQUIRED.filter(r => !r.test(i)); }
+function incomplete(){
+  return items.filter(i => !i.retired && gaps(i).length);
+}
+function screenDetails(){
+  const list = incomplete();
+  if (!list.length) return '<div class="empty" style="padding:44px 0"><b>Nothing missing</b>' +
+    'Every shirt has a brand, colour, fabric and size recorded.</div>';
+  let h = '<p class="note" style="margin-top:16px">Shirts with something still to record. Tap one to fill it in. ' +
+          'A blank cohort is not counted here — Legacy is a valid answer.</p>';
+  ["Everyday","Pyjamas"].forEach(cat => {
+    const g = list.filter(i => i.cat === cat);
+    if (!g.length) return;
+    h += '<div class="g1"><h2>' + (cat === "Everyday" ? "Wardrobe" : "Pyjamas") + '</h2>' +
+         '<span class="n">' + sum(g) + '</span></div>';
+    g.slice().sort((a,b) => gaps(b).length - gaps(a).length || colourRank(a.colour) - colourRank(b.colour))
+     .forEach(i => {
+       const lm = leadAndMeta(i);
+       h += '<button class="item" data-id="' + i.id + '">' +
+         swatchHTML(i.colour, i.neck === "Vee", "sw-lg") +
+         '<span class="body"><span class="l1"><span class="lead">' + esc(lm.lead || "Unnamed") + '</span></span>' +
+         '<span class="gapchips">' + gaps(i).map(r => '<i>' + r.label + '</i>').join("") + '</span></span>' +
+         '<span class="qty">' + i.qty + '</span></button>';
+     });
+  });
+  h += '<p class="note">' + list.length + ' entries need attention.</p>';
   return h;
 }
 function screenArchive(){
@@ -913,31 +1015,54 @@ function screenSummary(){
 function render(){
   const s = ui.screen;
   el("hdrTitle").textContent = s === "summary" ? "Summary" : s === "pyjamas" ? "Pyjamas" :
-    s === "stocktake" ? "Stock-take" : s === "archive" ? "Archive" : "T-Shirt Wardrobe";
+    s === "stocktake" ? "Stock-take" : s === "archive" ? "Archive" :
+    s === "details" ? "Missing details" : "T-Shirt Wardrobe";
   el("hdrCount").textContent = s === "pyjamas" ? sum(pyjamas()) + " shirts"
     : s === "summary" ? sum(wardrobe()) + " shirts"
     : s === "archive" ? sum(archived()) + " retired"
+    : s === "details" ? incomplete().length + " to fix"
     : s === "stocktake" ? (audit ? (tally().total - tally().u) + " of " + tally().total + " placed" : "not started")
     : sum(filtered()) + " shirts";
 
-  el("navrow").innerHTML = s === "wardrobe"
-    ? '<button class="nav" data-go="summary">Summary</button>' +
-      '<button class="nav" data-go="stocktake">Stock-take' +
-      (audit && tally().u ? ' <span class="num">' + tally().u + '</span>' : '') + '</button>' +
-      '<button class="nav" data-go="pyjamas">Pyjamas</button>' +
-      '<button class="nav" data-go="archive">Archive</button>' +
-      '<span class="sp"><button class="add" id="btnAdd">+ Add</button><button id="btnMenu">•••</button></span>'
-    : '<button class="back" data-go="wardrobe">‹ Wardrobe</button>' +
-      '<span class="sp">' + (s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
+  const tabs = [
+    ["wardrobe","Wardrobe", ""],
+    ["summary","Summary", ""],
+    ["stocktake","Stock-take", audit && tally().u ? tally().u : ""],
+    ["details","Details", incomplete().length || ""],
+    ["pyjamas","Pyjamas", ""],
+    ["archive","Archive", ""]
+  ];
+  el("navrow").innerHTML =
+    '<span class="navstrip">' + tabs.map(t =>
+      '<button class="nav' + (t[0] === s ? " here" : "") + '" data-go="' + t[0] + '">' + t[1] +
+      (t[2] ? ' <span class="num">' + t[2] + '</span>' : '') + '</button>').join("") + '</span>' +
+    '<span class="sp">' +
+      (s === "wardrobe" || s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
       '<button id="btnMenu">•••</button></span>';
 
   el("view").innerHTML = s === "summary" ? screenSummary() : s === "pyjamas" ? screenPyjamas() :
-    s === "stocktake" ? screenStocktake() : s === "archive" ? screenArchive() : screenWardrobe();
+    s === "stocktake" ? screenStocktake() : s === "archive" ? screenArchive() :
+    s === "details" ? screenDetails() : screenWardrobe();
 }
 
 /* ============================== sheet ============================== */
-function openSheet(html){ el("sheet").innerHTML = html; el("sheet").classList.add("on"); el("scrim").classList.add("on"); }
-function closeSheet(){ el("sheet").classList.remove("on"); el("scrim").classList.remove("on"); }
+let scrollLock = 0;
+function openSheet(html){
+  const sh = el("sheet");
+  if (!sh.classList.contains("on")){          // lock the page behind, or iOS steals the scroll
+    scrollLock = window.scrollY || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = (-scrollLock) + "px";
+    document.body.style.width = "100%";
+  }
+  sh.innerHTML = html; sh.scrollTop = 0;
+  sh.classList.add("on"); el("scrim").classList.add("on");
+}
+function closeSheet(){
+  el("sheet").classList.remove("on"); el("scrim").classList.remove("on");
+  document.body.style.position = ""; document.body.style.top = ""; document.body.style.width = "";
+  window.scrollTo(0, scrollLock);
+}
 function toast(m){ const t = el("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1900); }
 
 function field(label, id, value, type, ph, list){
@@ -1062,6 +1187,7 @@ function menu(){
   let h = '<div class="sheethead"><h3>Wardrobe data</h3><button class="done" id="sCancel">Close</button></div><div class="menu">' +
     '<button id="mBackup">Copy a backup<small>The full JSON, for pasting somewhere safe.</small></button>' +
     '<button id="mMd">Copy as Markdown<small>Rebuilds your original note format.</small></button>' +
+    '<button id="mView">Reset the view<small>Back to grouping by cut, then colour, in list view.</small></button>' +
     '<button id="mRestore">Restore from a backup<small>Paste JSON to replace everything stored.</small></button>' +
     '<button id="mReset">Start again from the note<small>Reloads the shirts from your original list.</small></button></div>';
   h += '<p class="note">Storage in use: ' + (Store.mode === "local" ? "this browser, on this device" :
@@ -1081,6 +1207,11 @@ function menu(){
   el("mBackup").onclick = () => out(JSON.stringify({v:3, items:items, ui:{tiers:ui.tiers, view:ui.view},
     audit:audit, history:history}, null, 1), "Backup");
   el("mMd").onclick = () => out(toMarkdown(), "Markdown");
+  el("mView").onclick = async () => {
+    ui.tiers = ["cut","colour"]; ui.view = "list";
+    DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = "";
+    await persist(); closeSheet(); ui.screen = "wardrobe"; render(); toast("View reset");
+  };
   el("mRestore").onclick = () => {
     openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Restore</h3>' +
       '<button class="done" id="sGo">Replace</button></div><div class="f"><label for="ioBox">Paste a backup</label>' +
@@ -1139,6 +1270,8 @@ document.addEventListener("click", e => {
     else setMark(key, n, NEXT[m[n]]);
     return;
   }
+  const adj = e.target.closest("[data-adj]");
+  if (adj){ adjustSheet(adj.dataset.adj); return; }
   const hb = e.target.closest("[data-hist]");
   if (hb){ histSheet(+hb.dataset.hist); return; }
   if (e.target.closest("#stStart")){
@@ -1150,9 +1283,6 @@ document.addEventListener("click", e => {
   }
   if (e.target.closest("#stOut")){ ui.auditOutstanding = !ui.auditOutstanding; render(); return; }
   if (e.target.closest("#stPy")){ ui.auditPyjamas = !ui.auditPyjamas; render(); return; }
-  if (e.target.closest("#stRest")){
-    bulk(auditEntries(), "rest"); toast("Everything unknown sent to the wash"); return;
-  }
   if (e.target.closest("#stNone")){ bulk(auditEntries(), "u"); toast("Cleared"); return; }
   const gall = e.target.closest("[data-gall]");
   if (gall){
