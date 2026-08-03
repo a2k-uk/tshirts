@@ -905,11 +905,12 @@ function finishAudit(){
       missing.push({ key:e.key, colour:e.colour, vee:e.neck === "Vee", lead:lm.lead, meta:lm.meta, n:n });
     }
   });
+  items = items.map(i => seenIds[i.id] ? Object.assign({}, i, {lastSeen:when}) : i);
   history.unshift({ finished:when, started:audit.started, total:t.total, w:t.w, l:t.l, u:t.u,
                     missing:missing, carry:carry, marks:audit.marks,
-                    startCarry:audit.carry || null, startCarryDate:audit.carryDate || "" });
+                    startCarry:audit.carry || null, startCarryDate:audit.carryDate || "",
+                    itemsSnapshot:items.map(i => Object.assign({}, i)) });
   history = history.slice(0,24);
-  items = items.map(i => seenIds[i.id] ? Object.assign({}, i, {lastSeen:when}) : i);
   audit = null; ui.auditOutstanding = false;
   persist(); render();
   toast(t.u ? t.u + " still unknown" : "All " + t.total + " placed");
@@ -983,12 +984,12 @@ function incomplete(){
 }
 function screenData(){
   const list = incomplete();
-  let h;
+  let h = '<div class="g1" style="margin-top:16px"><h2>Missing data</h2></div>';
   if (!list.length){
-    h = '<div class="empty" style="padding:44px 0"><b>Nothing missing</b>' +
+    h += '<div class="empty" style="padding:24px 0"><b>Nothing missing</b>' +
       'Every shirt has a brand, colour, fabric and size recorded.</div>';
   } else {
-    h = '<p class="note" style="margin-top:16px">Shirts with something still to record. Tap one to fill it in. ' +
+    h += '<p class="note" style="margin-top:0">Shirts with something still to record. Tap one to fill it in. ' +
             'A blank cohort is not counted here — Legacy is a valid answer.</p>';
     ["Everyday","Pyjamas"].forEach(cat => {
       const g = list.filter(i => i.cat === cat);
@@ -1019,14 +1020,11 @@ function screenData(){
       'Connect a GitHub personal access token to keep this synced across devices.</p>' +
       '<div class="rowbtns"><button id="dGhConnect">Connect to GitHub</button></div>';
   }
-  h += '<div class="g1" style="margin-top:28px"><h2>Wardrobe data</h2></div><div class="menu">' +
-    '<button id="dBackup">Copy a backup<small>The full JSON, for pasting somewhere safe.</small></button>' +
-    '<button id="dMd">Copy as Markdown<small>Rebuilds your original note format.</small></button>' +
-    '<button id="dView">Reset the view<small>Back to grouping by cut, then colour, in list view.</small></button>' +
-    '<button id="dRestore">Restore from a backup<small>Paste JSON to replace everything stored.</small></button>' +
-    '<button id="dReset">Start again from the note<small>Reloads the shirts from your original list.</small></button></div>' +
+  h += '<div class="g1" style="margin-top:28px"><h2>Data operations</h2></div><div class="menu">' +
+    '<button id="dCsv">Export to CSV<small>A row per shirt, for opening in a spreadsheet.</small></button>' +
+    '<button id="dRestoreStock">Restore from stock-take<small>Set the wardrobe back to how it looked right after an earlier stock-take.</small></button></div>' +
     '<p class="note">Storage in use: ' + (Store.mode === "local" ? "this browser, on this device" :
-    Store.mode === "host" ? "app storage" : "memory only — nothing will be kept, so copy a backup") + '.</p>';
+    Store.mode === "host" ? "app storage" : "memory only — nothing will be kept") + '.</p>';
   return h;
 }
 function screenArchive(){
@@ -1287,32 +1285,13 @@ function editItem(id){
 }
 
 /* ============================== export ============================== */
-function toMarkdown(){
-  const lines = ["# T-Shirts", ""];
-  const LEG = "Legacy";
-  ["Crew","Vee","Other"].forEach(n => {
-    const g = items.filter(i => i.cat === "Everyday" && i.neck === n);
-    if (!g.length) return;
-    lines.push("### " + n + (n === "Other" ? "" : " Neck"));
-    uniq(g, i => i.acquired || LEG).sort((a,b) => (b === LEG ? "0000-00" : b).localeCompare(a === LEG ? "0000-00" : a))
-      .forEach(k => {
-        lines.push("***" + (k === LEG ? LEG : cohort(k).replace(" ","-")) + "***");
-        g.filter(i => (i.acquired || LEG) === k).forEach(i => {
-          lines.push(i.qty + "x " +
-            [i.brand,i.fabric,i.fit,i.colour,i.size].filter(Boolean).join(" - ") +
-            (i.notes ? " (" + i.notes + ")" : "") + (i.retired ? " [retired]" : ""));
-        });
-      });
-    lines.push("");
-  });
-  const py = pyjamas();
-  if (py.length){
-    lines.push("### Pyjamas");
-    py.forEach(i => lines.push(i.qty + "x " +
-      [i.brand,i.fabric,i.colour,i.neck === "Other" ? "" : i.neck].filter(Boolean).join(" - ") +
-      (i.notes ? " (" + i.notes + ")" : "")));
-  }
-  return lines.join("\n");
+function toCSV(){
+  const cols = ["Category","Neck","Brand","Fabric","Fabric family","Colour","Size","Fit","Qty","Acquired","Retired","Notes"];
+  const cell = v => { const s = String(v == null ? "" : v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const rows = [cols.join(",")];
+  items.forEach(i => rows.push([i.cat, i.neck, i.brand, i.fabric, i.ffam, i.colour, i.size, i.fit,
+    i.qty, i.acquired, i.retired ? "yes" : "", i.notes].map(cell).join(",")));
+  return rows.join("\r\n");
 }
 function ghConnectSheet(){
   openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Connect to GitHub</h3>' +
@@ -1351,22 +1330,32 @@ function dataOut(text, label){
     catch(e){ el("ioBox").focus(); el("ioBox").select(); toast("Select and copy"); }
   };
 }
-function dataRestore(){
-  openSheet('<div class="sheethead"><button class="cancel" id="sBack">Back</button><h3>Restore</h3>' +
-    '<button class="done" id="sGo">Replace</button></div><div class="f"><label for="ioBox">Paste a backup</label>' +
-    '<textarea class="io" id="ioBox" placeholder="{ … }"></textarea></div>' +
-    '<p class="note">This replaces everything currently in the app.</p><div style="height:20px"></div>');
-  el("sBack").onclick = closeSheet;
-  el("sGo").onclick = async () => {
-    try{
-      const p = JSON.parse(el("ioBox").value);
-      const arr = Array.isArray(p) ? p : p.items;
-      if (!Array.isArray(arr)) throw new Error("bad");
-      items = arr.map(normalise);
-      audit = p.audit || null; history = Array.isArray(p.history) ? p.history : [];
-      await persist(); closeSheet(); render(); toast("Restored");
-    }catch(e){ toast("That is not a valid backup"); }
-  };
+function restoreStockSheet(){
+  const usable = history.filter(a => Array.isArray(a.itemsSnapshot));
+  let h = '<div class="sheethead"><h3>Restore from stock-take</h3><button class="done" id="sCancel">Close</button></div>';
+  if (!usable.length){
+    h += '<div class="empty" style="padding:24px 0"><b>Nothing to restore from</b>' +
+      'Finish a stock-take first — each one you file from now on can be restored to.</div>';
+  } else {
+    h += '<p class="note">Pick a stock-take to set the wardrobe back to how it looked right after it was filed. ' +
+         'This replaces the current contents — it does not touch stock-take history itself.</p><div class="menu">';
+    usable.forEach((a, n) => {
+      h += '<button data-restore="' + n + '">' + fmtDate(a.finished) +
+        '<small>' + a.w + ' in the drawer, ' + a.l + ' in the wash, ' + a.u + ' unknown, out of ' + a.total + '.</small></button>';
+    });
+    h += '</div>';
+  }
+  h += '<div style="height:20px"></div>';
+  openSheet(h);
+  el("sCancel").onclick = closeSheet;
+  el("sheet").querySelectorAll("[data-restore]").forEach(btn => {
+    btn.onclick = async () => {
+      const a = usable[+btn.dataset.restore];
+      if (!confirm("Replace the current wardrobe with how it looked after the " + fmtDate(a.finished) + " stock-take?")) return;
+      items = a.itemsSnapshot.map(normalise);
+      await persist(); closeSheet(); render(); toast("Restored to " + fmtDate(a.finished));
+    };
+  });
 }
 
 /* ============================== wiring ============================== */
@@ -1439,22 +1428,8 @@ document.addEventListener("click", e => {
   }
   if (e.target.closest("#btnAdd")){ editItem(null); return; }
   if (e.target.closest("#btnMore")){ ui.navExpanded = !ui.navExpanded; render(); return; }
-  if (e.target.closest("#dBackup")){
-    dataOut(JSON.stringify({v:3, items:items, ui:{tiers:ui.tiers, view:ui.view}, audit:audit, history:history}, null, 1), "Backup");
-    return;
-  }
-  if (e.target.closest("#dMd")){ dataOut(toMarkdown(), "Markdown"); return; }
-  if (e.target.closest("#dView")){
-    ui.tiers = ["cut","colour"]; ui.view = "list";
-    DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = "";
-    persist(); ui.screen = "wardrobe"; render(); toast("View reset"); return;
-  }
-  if (e.target.closest("#dRestore")){ dataRestore(); return; }
-  if (e.target.closest("#dReset")){
-    if (!confirm("Replace everything with the original note?")) return;
-    items = SEED.map(normalise); audit = null; history = [];
-    persist(); render(); toast("Reset"); return;
-  }
+  if (e.target.closest("#dCsv")){ dataOut(toCSV(), "CSV"); return; }
+  if (e.target.closest("#dRestoreStock")){ restoreStockSheet(); return; }
   if (e.target.closest("#dGhConnect")){ ghConnectSheet(); return; }
   if (e.target.closest("#dGhDisconnect")){
     GH.setToken(""); GH.sha = null; ghStatus = ""; toast("Disconnected"); render(); return;
@@ -1489,6 +1464,7 @@ el("scrim").onclick = closeSheet;
     if (Array.isArray(saved.ui.tiers)) ui.tiers = saved.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
     if (saved.ui.view) ui.view = saved.ui.view;
   }
+  if (history.length && !history[0].itemsSnapshot) history[0].itemsSnapshot = items.map(i => Object.assign({}, i));
   render();
 })();
 </script>
