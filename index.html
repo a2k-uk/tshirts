@@ -55,7 +55,6 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .navrow .sp{flex:none;display:flex;gap:14px;align-items:center}
 .navrow .sp button{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;
   font-weight:600;color:var(--mute)}
-.navrow .sp button.add{color:var(--ink)}
 .navrow .sp button.toggle{font-size:16px;letter-spacing:0;line-height:1}
 .back{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:600}
 
@@ -847,7 +846,8 @@ function toolbar(){
     '<div class="seg"><button data-view="list" aria-pressed="' + (ui.view === "list") + '">List</button>' +
     '<button data-view="tiles" aria-pressed="' + (ui.view === "tiles") + '">Tiles</button></div>' +
     '<div class="right"><button class="chip" aria-pressed="' + ui.showFilters + '" id="btnFilters">Filter' +
-    (fc ? ' <span class="n">' + fc + '</span>' : '') + '</button></div></div>';
+    (fc ? ' <span class="n">' + fc + '</span>' : '') + '</button>' +
+    '<button class="chip" id="btnAdd">+ Add</button></div></div>';
 }
 function filterPanel(){
   const pool = wardrobe();
@@ -945,8 +945,10 @@ function screenArchive(){
 }
 function screenPyjamas(){
   const list = pyjamas();
-  if (!list.length) return '<div class="empty"><b>No pyjama shirts</b>Retire a shirt here when it is past wearing out of the house.</div>';
-  let h = '<p class="note" style="margin-top:16px">Demoted from the wardrobe and kept out of every count on the other screens.</p>';
+  const addBar = '<div class="toolbar"><div class="right"><button class="chip" id="btnAdd">+ Add</button></div></div>';
+  if (!list.length) return addBar +
+    '<div class="empty"><b>No pyjama shirts</b>Retire a shirt here when it is past wearing out of the house.</div>';
+  let h = addBar + '<p class="note" style="margin-top:16px">Demoted from the wardrobe and kept out of every count on the other screens.</p>';
   const necks = ["Crew","Vee","Other"].filter(n => list.some(i => i.neck === n));
   necks.forEach(n => {
     const g = list.filter(i => i.neck === n);
@@ -1059,7 +1061,6 @@ function render(){
     '<div class="navrow-row">' +
       '<span class="navstrip">' + row1.map(tab).join("") + '</span>' +
       '<span class="sp">' +
-        (s === "wardrobe" || s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
         '<button class="toggle" id="btnMore" aria-expanded="' + expanded + '" aria-label="' +
         (expanded ? "Hide more tabs" : "Show more tabs") + '">' + (expanded ? "⌃" : "⌄") + '</button>' +
       '</span>' +
