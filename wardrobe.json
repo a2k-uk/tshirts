@@ -276,8 +276,8 @@
  ],
  "ui": {
   "tiers": [
-   "cut",
-   "colour"
+   "colour",
+   "cut"
   ],
   "view": "list"
  },
