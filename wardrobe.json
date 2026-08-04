@@ -276,7 +276,8 @@
  ],
  "ui": {
   "tiers": [
-   "fabric"
+   "fabric",
+   "cut"
   ],
   "view": "list"
  },
