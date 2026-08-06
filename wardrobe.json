@@ -276,7 +276,7 @@
  ],
  "ui": {
   "tiers": [
-   "cohort"
+   "size"
   ],
   "view": "list"
  },
