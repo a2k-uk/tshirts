@@ -275,9 +275,7 @@
   }
  ],
  "ui": {
-  "tiers": [
-   "brand"
-  ],
+  "tiers": [],
   "view": "list"
  },
  "audit": null,
