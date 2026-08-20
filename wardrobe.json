@@ -371,7 +371,9 @@
   }
  ],
  "ui": {
-  "tiers": []
+  "tiers": [
+   "fabric"
+  ]
  },
  "audit": null,
  "history": [
