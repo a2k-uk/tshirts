@@ -371,9 +371,7 @@
   }
  ],
  "ui": {
-  "tiers": [
-   "cohort"
-  ]
+  "tiers": []
  },
  "audit": null,
  "history": [
