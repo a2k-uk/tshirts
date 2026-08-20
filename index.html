@@ -55,6 +55,7 @@ header{position:sticky;top:0;z-index:40;background:var(--paper);
 .navrow .sp{flex:none;display:flex;gap:14px;align-items:center}
 .navrow .sp button{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;
   font-weight:600;color:var(--mute)}
+.navrow .sp button.add{color:var(--ink)}
 .navrow .sp button.toggle{font-size:16px;letter-spacing:0;line-height:1}
 .back{font-family:var(--label);text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:600}
 
@@ -74,13 +75,11 @@ section{padding:18px 0 4px}
   opacity:.55;margin-top:2px}
 .padhint{font-size:12px;color:var(--mute);margin:9px 0 0;min-height:1.35em}
 .padhint b{font-weight:600;color:var(--ink)}
+.searchbox{width:100%;background:var(--card);border:1px solid var(--rule-soft);
+  border-radius:2px;padding:9px 10px;font-size:15px;margin-top:12px}
 
 /* ---------- toolbar ---------- */
 .toolbar{display:flex;align-items:center;gap:6px;margin-top:14px}
-.seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.seg button{padding:6px 11px;font-family:var(--label);text-transform:uppercase;letter-spacing:.1em;
-  font-size:11px;font-weight:600;color:var(--mute);background:var(--card)}
-.seg button[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink)}
 .toolbar .right{margin-left:auto;display:flex;gap:6px}
 .chip{border:1px solid var(--rule);border-radius:2px;padding:5px 9px;font-family:var(--label);
   text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:600;color:var(--mute);
@@ -88,15 +87,6 @@ section{padding:18px 0 4px}
 .chip[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
 .chip .sw{width:9px;height:9px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.45);flex:none}
 .chip .n{font-family:var(--data);letter-spacing:0;opacity:.65}
-.chiprow{display:flex;flex-wrap:wrap;gap:6px}
-.chipgroup{margin-top:12px}
-.filterpanel{border:1px solid var(--rule-soft);border-radius:2px;padding:4px 12px 14px;margin-top:10px;
-  background:var(--card)}
-.filterpanel input[type=search]{width:100%;background:var(--paper);border:1px solid var(--rule-soft);
-  border-radius:2px;padding:9px 10px;font-size:15px;margin-top:12px}
-.filtertoggle{display:flex;align-items:center;gap:8px;margin-top:14px}
-.filtertoggle .clear{margin-left:auto;font-family:var(--label);font-size:11px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--thread);font-weight:600}
 
 /* ---------- grouped list ---------- */
 .g1,.g2,.g3{display:flex;align-items:baseline;gap:8px}
@@ -136,21 +126,6 @@ section{padding:18px 0 4px}
 .flag{color:var(--thread)}
 .retired .body,.retired .qty,.retired .sw-lg{opacity:.42}
 
-/* ---------- tile view ---------- */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:9px;margin-top:12px}
-.tile{display:flex;align-items:center;gap:11px;text-align:left;border:1px solid var(--rule);
-  border-radius:2px;background:var(--card);padding:10px 11px}
-.tile .face{position:relative;width:40px;height:40px;flex:none;align-self:flex-start}
-.tile .fill{position:absolute;inset:0;width:100%;height:100%;
-  box-shadow:inset 0 0 0 1px rgba(128,128,128,.45)}
-.tile .q{position:absolute;right:2px;bottom:1px;font-family:var(--data);font-size:13px;line-height:1}
-.tile .cap{flex:1;min-width:0;font-family:var(--label);text-transform:uppercase;letter-spacing:.07em;
-  font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.3;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tile .cap span{display:block;color:var(--mute);font-size:10px;letter-spacing:.05em;margin-top:3px;
-  white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tile.retired{opacity:.42}
-.tile .face.zeroed{opacity:.35}
 .arow .sw-lg,.arow .veesvg{align-self:center;margin-top:0}
 
 /* ---------- wardrobe grid + tables ---------- */
@@ -415,11 +390,8 @@ function adoptCloud(cloud){
   items = (arr || []).map(normalise);
   audit = cloud.audit || null;
   history = Array.isArray(cloud.history) ? cloud.history : [];
-  if (cloud.ui){
-    if (Array.isArray(cloud.ui.tiers)) ui.tiers = cloud.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
-    if (cloud.ui.view) ui.view = cloud.ui.view;
-  }
-  Store.save({v:3, items, ui:{tiers:ui.tiers, view:ui.view}, audit, history});
+  if (cloud.ui && Array.isArray(cloud.ui.tiers)) ui.tiers = cloud.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
+  Store.save({v:3, items, ui:{tiers:ui.tiers}, audit, history});
 }
 
 /* ============================== colour ============================== */
@@ -454,7 +426,6 @@ function colourRank(c){                    // greyscale darkest-first, then ever
   const grey = Math.max(p[0],p[1],p[2]) - Math.min(p[0],p[1],p[2]) <= 14;
   return (grey ? 0 : 1000) + l;
 }
-function rankKey(c){ return String(Math.round(colourRank(c))).padStart(5,"0"); }
 function swatchHTML(colour, vee, cls){
   if (!vee) return '<i class="' + cls + '" style="' + swatchStyle(colour) + '"></i>';
   const v = swatchCSS(colour);
@@ -529,7 +500,7 @@ function thisMonth(){
 function cohort(a){ if (!a) return "Legacy"; const p = a.split("-"); return MONTHS[+p[1]-1] + " " + p[0].slice(2); }
 const DIMS = {
   cut:    {label:"Cut",    key:i => i.neck || "—",        order:["Crew","Vee","Other"], suffix:{Crew:" neck", Vee:" neck"}},
-  colour: {label:"Colour", key:i => family(i.colour),     swatch:true, sort:i => rankKey(i.colour)},
+  colour: {label:"Colour", key:i => family(i.colour),     swatch:true},
   brand:  {label:"Brand",  key:i => i.brand || "—"},
   fabric: {label:"Fabric", key:i => i.ffam,               order:FABRIC_FAMILIES, mix:true},
   cohort: {label:"Cohort", key:i => cohort(i.acquired),   sort:i => i.acquired || "0000-00", desc:true},
@@ -542,10 +513,8 @@ let items = [], audit = null, history = [];
 let ui = {
   screen:"wardrobe",                       // wardrobe | summary | pyjamas
   tiers:["cut","colour"],
-  view:"list",                             // list | tiles
   navExpanded:false,
-  q:"", showFilters:false, auditOutstanding:false, auditPyjamas:false,
-  filters:{ cut:[], colour:[], brand:[], fabric:[], cohort:[], size:[] }
+  q:"", auditOutstanding:false, auditPyjamas:false
 };
 
 /* ============================== helpers ============================== */
@@ -559,10 +528,6 @@ function pyjamas(){ return items.filter(i => i.cat === "Pyjamas" && !i.retired);
 function archived(){ return items.filter(i => i.retired); }
 function filtered(){
   return wardrobe().filter(i => {
-    for (const k of DIM_KEYS){
-      const f = ui.filters[k];
-      if (f.length && f.indexOf(DIMS[k].key(i)) < 0) return false;
-    }
     if (ui.q){
       const hay = [i.brand,i.fabric,i.ffam,i.colour,i.size,i.fit,i.notes,cohort(i.acquired)].join(" ").toLowerCase();
       if (hay.indexOf(ui.q.toLowerCase()) < 0) return false;
@@ -570,7 +535,6 @@ function filtered(){
     return true;
   });
 }
-function filterCount(){ return DIM_KEYS.reduce((t,k) => t + ui.filters[k].length, 0) + (ui.q ? 1 : 0); }
 
 function groupOrder(list, dk){
   const d = DIMS[dk];
@@ -612,26 +576,6 @@ function itemRow(i){
     '<span class="l2">' + esc(lm.meta) + '</span></span>' +
     '<span class="qty">' + i.qty + '</span></button>';
 }
-function itemTile(i){
-  const g = k => ui.screen === "wardrobe" && ui.tiers.indexOf(k) > -1;
-  const cap = [];
-  if (!g("colour")) cap.push(i.colour || "—");
-  if (!g("brand") && i.brand) cap.push(i.brand);
-  const sub = [];
-  if (i.fabric || i.ffam) sub.push(fabricLabel(i, g("fabric")));
-  if (!g("size") && i.size) sub.push("Size " + i.size);
-  if (!g("cohort")) sub.push(cohort(i.acquired));
-  if (!cap.length) cap.push(sub.shift() || "Shirt");
-  const on = inkOn(i.colour);
-  const face = '<button class="tile' + (i.retired ? " retired" : "") + '" data-id="' + i.id + '">' +
-    '<span class="face">' + swatchHTML(i.colour, i.neck === "Vee", "fill") + '</span>' +
-    '<span class="cap">' + esc(cap.join(" · ")) +
-    (sub.length ? '<span>' + esc(sub.join(" · ")) + '</span>' : '') + '</span></button>';
-  if (i.qty <= 0)                              // an entry you own none of, still editable
-    return face.replace('class="face', 'class="face zeroed')
-               .replace('</span><span class="cap"', '<span class="q" style="color:' + on + '">0</span></span><span class="cap"');
-  return face.repeat(i.qty);                   // one tile per shirt
-}
 function itemsBlock(list, depth){
   const sorted = list.slice().sort((a,b) =>
     colourRank(a.colour) - colourRank(b.colour) ||
@@ -640,7 +584,6 @@ function itemsBlock(list, depth){
     a.brand.localeCompare(b.brand));
   if (ui.screen === "stocktake")
     return '<div' + (depth ? ' class="d' + (depth+1) + '"' : '') + '>' + sorted.map(auditRow).join("") + '</div>';
-  if (ui.view === "tiles") return '<div class="tiles' + (depth ? " d" + (depth+1) : "") + '">' + sorted.map(itemTile).join("") + '</div>';
   return '<div' + (depth ? ' class="d' + (depth+1) + '"' : '') + '>' + sorted.map(itemRow).join("") + '</div>';
 }
 
@@ -928,44 +871,15 @@ function padBlock(){
   h += '<p class="padhint">' + (ui.tiers.length
     ? "Grouped by <b>" + ui.tiers.map(k => DIMS[k].label.toLowerCase()).join("</b>, then <b>") + "</b>."
     : "Ungrouped — tap up to three, in the order you want them nested.") + '</p>';
+  h += '<input id="q" class="searchbox" type="search" placeholder="Search brand, fabric, colour…" value="' + esc(ui.q) + '">';
   h += '</section>';
-  return h;
-}
-function toolbar(){
-  const fc = filterCount();
-  return '<div class="toolbar">' +
-    '<div class="seg"><button data-view="list" aria-pressed="' + (ui.view === "list") + '">List</button>' +
-    '<button data-view="tiles" aria-pressed="' + (ui.view === "tiles") + '">Tiles</button></div>' +
-    '<div class="right"><button class="chip" aria-pressed="' + ui.showFilters + '" id="btnFilters">Filter' +
-    (fc ? ' <span class="n">' + fc + '</span>' : '') + '</button>' +
-    '<button class="chip" id="btnAdd">+ Add</button></div></div>';
-}
-function filterPanel(){
-  const pool = wardrobe();
-  let h = '<div class="filterpanel"><input id="q" type="search" placeholder="Search brand, fabric, colour…" value="' + esc(ui.q) + '">';
-  DIM_KEYS.forEach(dk => {
-    const d = DIMS[dk];
-    const keys = groupOrder(pool, dk);
-    if (keys.length < 2) return;
-    h += '<div class="chipgroup"><p class="eyebrow" style="margin-bottom:7px">' + d.label + '</p><div class="chiprow">';
-    keys.forEach(k => {
-      const on = ui.filters[dk].indexOf(k) > -1;
-      const ex = d.swatch ? pool.find(i => d.key(i) === k) : null;
-      h += '<button class="chip" aria-pressed="' + on + '" data-f="' + dk + '" data-v="' + esc(k) + '">' +
-        (ex ? '<i class="sw" style="' + swatchStyle(ex.colour) + '"></i>' : '') + esc(k) +
-        ' <span class="n">' + sum(pool.filter(i => d.key(i) === k)) + '</span></button>';
-    });
-    h += '</div></div>';
-  });
-  h += (filterCount() ? '<div class="filtertoggle"><button class="clear" id="btnClear">Clear</button></div>' : '') + '</div>';
   return h;
 }
 function screenWardrobe(){
   const list = filtered();
-  let h = padBlock() + toolbar();
-  if (ui.showFilters) h += filterPanel();
+  let h = padBlock();
   if (!list.length){
-    h += '<div class="empty"><b>Nothing matches</b>Loosen a filter, or add the shirt you were looking for.</div>';
+    h += '<div class="empty"><b>Nothing matches</b>Try a different search, or add the shirt you were looking for.</div>';
   } else {
     h += renderGroups(list, ui.tiers, 0);
     h += '<p class="note">' + sum(list) + ' shirts across ' + list.length + ' entries. Tap any shirt to edit it.</p>';
@@ -1046,10 +960,8 @@ function screenArchive(){
 }
 function screenPyjamas(){
   const list = pyjamas();
-  const addBar = '<div class="toolbar"><div class="right"><button class="chip" id="btnAdd">+ Add</button></div></div>';
-  if (!list.length) return addBar +
-    '<div class="empty"><b>No pyjama shirts</b>Retire a shirt here when it is past wearing out of the house.</div>';
-  let h = addBar + '<p class="note" style="margin-top:16px">Demoted from the wardrobe and kept out of every count on the other screens.</p>';
+  if (!list.length) return '<div class="empty"><b>No pyjama shirts</b>Retire a shirt here when it is past wearing out of the house.</div>';
+  let h = '<p class="note" style="margin-top:16px">Demoted from the wardrobe and kept out of every count on the other screens.</p>';
   const necks = ["Crew","Vee","Other"].filter(n => list.some(i => i.neck === n));
   necks.forEach(n => {
     const g = list.filter(i => i.neck === n);
@@ -1097,15 +1009,19 @@ function screenSummary(){
   const pct = v => Math.round(v / total * 100) + "%";
 
   h += '<section><p class="eyebrow">Fabric</p><table><tbody>';
-  FABRIC_FAMILIES.forEach(ff => {
-    const g = list.filter(i => i.ffam === ff);
-    if (!g.length) return;
-    h += '<tr><td class="k">' + esc(ff) + '</td><td class="n">' + sum(g) + '</td><td class="n" style="width:52px;color:var(--mute)">' + pct(sum(g)) + '</td></tr>';
-    uniq(g, i => i.fabric || "Unrecorded").forEach(f => {
-      const v = sum(g.filter(i => (i.fabric || "Unrecorded") === f));
-      h += '<tr><td class="k sub">' + esc(f) + '</td><td class="n" style="color:var(--mute)">' + v + '</td><td></td></tr>';
+  FABRIC_FAMILIES.slice()
+    .sort((a,b) => sum(list.filter(i => i.ffam === b)) - sum(list.filter(i => i.ffam === a)))
+    .forEach(ff => {
+      const g = list.filter(i => i.ffam === ff);
+      if (!g.length) return;
+      h += '<tr><td class="k">' + esc(ff) + '</td><td class="n">' + sum(g) + '</td><td class="n" style="width:52px;color:var(--mute)">' + pct(sum(g)) + '</td></tr>';
+      uniq(g, i => i.fabric || "Unrecorded")
+        .sort((a,b) => sum(g.filter(i => (i.fabric || "Unrecorded") === b)) - sum(g.filter(i => (i.fabric || "Unrecorded") === a)))
+        .forEach(f => {
+          const v = sum(g.filter(i => (i.fabric || "Unrecorded") === f));
+          h += '<tr><td class="k sub">' + esc(f) + '</td><td class="n" style="color:var(--mute)">' + v + '</td><td></td></tr>';
+        });
     });
-  });
   h += '</tbody></table></section>';
 
   const LEG = "\u0000";
@@ -1162,6 +1078,7 @@ function render(){
     '<div class="navrow-row">' +
       '<span class="navstrip">' + row1.map(tab).join("") + '</span>' +
       '<span class="sp">' +
+        (s === "wardrobe" || s === "pyjamas" ? '<button class="add" id="btnAdd">+ Add</button>' : '') +
         '<button class="toggle" id="btnMore" aria-expanded="' + expanded + '" aria-label="' +
         (expanded ? "Hide more tabs" : "Show more tabs") + '">' + (expanded ? "⌃" : "⌄") + '</button>' +
       '</span>' +
@@ -1200,36 +1117,50 @@ function field(label, id, value, type, ph, list){
     '" value="' + esc(value) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') +
     (list ? ' list="' + list + '" autocapitalize="words"' : '') + '></div>';
 }
-function selectF(label, id, values, cur){
+function selectF(label, id, values, cur, blankable){
   return '<div class="f"><label for="' + id + '">' + label + '</label><select id="' + id + '">' +
+    (blankable ? '<option value=""' + (cur ? '' : ' selected') + '></option>' : '') +
     values.map(v => '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + '>' + esc(v) + '</option>').join("") +
     '</select></div>';
 }
+function selectOther(label, id, values, cur, otherId){
+  const isOther = !!cur && values.indexOf(cur) < 0;
+  return '<div class="f"><label for="' + id + '">' + label + '</label><select id="' + id + '">' +
+    '<option value=""' + (cur ? '' : ' selected') + '></option>' +
+    values.map(v => '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + '>' + esc(v) + '</option>').join("") +
+    '<option value="__other__"' + (isOther ? " selected" : "") + '>Other</option>' +
+    '</select></div>' +
+    '<div class="f" id="' + otherId + 'Wrap"' + (isOther ? "" : ' style="display:none"') + '>' +
+    '<label for="' + otherId + '">Custom ' + label.toLowerCase() + '</label>' +
+    '<input id="' + otherId + '" type="text" value="' + esc(isOther ? cur : "") + '"></div>';
+}
 function datalist(id, values){ return '<datalist id="' + id + '">' + values.map(v => '<option value="' + esc(v) + '">').join("") + '</datalist>'; }
+
+const SHIRT_COLOURS = ["Black","Dark Grey","Grey","Light Grey","Navy","White"];
+const SHIRT_SIZES = ["XS","S","M","L"];
 
 function editItem(id){
   const isNew = !id;
   const it = isNew
-    ? normalise({ cat: ui.screen === "pyjamas" ? "Pyjamas" : "Everyday", neck: ui.filters.cut[0] || "Crew",
-                  qty:1, acquired: thisMonth() })
+    ? Object.assign(normalise({ cat: ui.screen === "pyjamas" ? "Pyjamas" : "Everyday",
+                                 qty:1, acquired: thisMonth() }), {neck:"", ffam:""})
     : Object.assign({}, items.find(i => i.id === id));
+  const brands = uniq(items, i => i.brand).filter(Boolean).sort((a,b) => a.localeCompare(b));
 
   let h = '<div class="sheethead"><button class="cancel" id="sCancel">Cancel</button><h3>' +
           (isNew ? "Add shirts" : "Edit shirt") + '</h3><button class="done" id="sSave">Save</button></div>';
-  h += datalist("dlBrand", uniq(items, i => i.brand));
   h += datalist("dlFabric", uniq(items, i => i.fabric).concat(Object.keys(FABRIC_MAP).map(k => k.replace(/\b\w/g, c => c.toUpperCase()))));
-  h += datalist("dlColour", uniq(items, i => i.colour).concat(Object.keys(SWATCH).map(k => k.replace(/\b\w/g, c => c.toUpperCase()))));
 
   h += '<div class="f"><label>How many</label><div class="stepper"><button id="qMinus" aria-label="One fewer">−</button>' +
        '<span class="v" id="qVal">' + it.qty + '</span><button id="qPlus" aria-label="One more">+</button></div></div>';
-  h += '<div class="f2">' + selectF("Cut", "f_neck", ["Crew","Vee","Other"], it.neck) +
-       field("Colour", "f_colour", it.colour, "text", "Navy", "dlColour") + '</div>';
-  h += '<div class="f2">' + field("Brand", "f_brand", it.brand, "text", "Uniqlo", "dlBrand") +
-       field("Size", "f_size", it.size, "text", "S") + '</div>';
-  h += '<div class="f2">' + selectF("Fabric family", "f_ffam", FABRIC_FAMILIES, it.ffam) +
-       field("Fabric", "f_fabric", it.fabric, "text", "66/34", "dlFabric") + '</div>';
-  h += '<div class="f2">' + field("Fit", "f_fit", it.fit, "text", "Slim") +
-       field("Cohort", "f_acq", it.acquired, "month", "2026-07") + '</div>';
+  h += '<div class="f2">' + selectF("Cut", "f_neck", ["Crew","Vee","Other"], it.neck, true) +
+       selectF("Fabric family", "f_ffam", FABRIC_FAMILIES, it.ffam, true) + '</div>';
+  h += selectOther("Colour", "f_colour", SHIRT_COLOURS, it.colour, "f_colourOther");
+  h += selectOther("Brand", "f_brand", brands, it.brand, "f_brandOther");
+  h += selectOther("Size", "f_size", SHIRT_SIZES, it.size, "f_sizeOther");
+  h += '<div class="f2">' + field("Fabric", "f_fabric", it.fabric, "text", "", "dlFabric") +
+       field("Fit", "f_fit", it.fit, "text", "") + '</div>';
+  h += field("Cohort", "f_acq", it.acquired, "month", "2026-07");
   h += '<p class="hint">' + (it.acquired || !isNew
     ? "Legacy shirts keep their blank date; anything dated stays dated."
     : "New shirts need a cohort — the month you bought them.") + '</p>';
@@ -1252,16 +1183,29 @@ function editItem(id){
   el("qPlus").onclick  = () => setQ(qty + 1);
   el("f_fabric").addEventListener("input", e => { if (autoFam) el("f_ffam").value = fabricFamily(e.target.value); });
   el("f_ffam").addEventListener("change", () => { autoFam = false; });
+  const wireOther = (selId, wrapId, inputId) => {
+    const sel = el(selId);
+    sel.addEventListener("change", () => {
+      const isOther = sel.value === "__other__";
+      el(wrapId).style.display = isOther ? "" : "none";
+      if (isOther) el(inputId).focus();
+    });
+  };
+  wireOther("f_colour", "f_colourOtherWrap", "f_colourOther");
+  wireOther("f_brand", "f_brandOtherWrap", "f_brandOther");
+  wireOther("f_size", "f_sizeOtherWrap", "f_sizeOther");
   el("sCancel").onclick = closeSheet;
   el("sCancel2").onclick = closeSheet;
   el("sSave").onclick = el("sSave2").onclick = async () => {
+    if (isNew && !el("f_neck").value){ toast("Choose a cut before saving"); el("f_neck").focus(); return; }
     if (!el("f_acq").value && (isNew || it.acquired)){
       toast(isNew ? "Give it a cohort — the month you bought it" : "Only the original legacy shirts can have no cohort");
       el("f_acq").focus(); return;
     }
+    const otherOr = (selId, otherId) => el(selId).value === "__other__" ? el(otherId).value.trim() : el(selId).value;
     const next = normalise({ id:it.id, cat:it.cat, retired:it.retired, qty:qty,
-      neck:el("f_neck").value, colour:el("f_colour").value.trim(), brand:el("f_brand").value.trim(),
-      fabric:el("f_fabric").value.trim(), ffam:el("f_ffam").value, size:el("f_size").value.trim().toUpperCase(),
+      neck:el("f_neck").value, colour:otherOr("f_colour","f_colourOther"), brand:otherOr("f_brand","f_brandOther"),
+      fabric:el("f_fabric").value.trim(), ffam:el("f_ffam").value, size:otherOr("f_size","f_sizeOther").toUpperCase(),
       fit:el("f_fit").value.trim(), acquired:el("f_acq").value, notes:el("f_notes").value.trim() });
     if (isNew) items.push(next); else items = items.map(i => i.id === it.id ? next : i);
     await persist(); closeSheet(); render(); toast(isNew ? "Added" : "Saved");
@@ -1312,7 +1256,7 @@ function ghConnectSheet(){
     try{
       const cloud = await GH.pull();
       if (cloud){ adoptCloud(cloud); toast("Connected — loaded the cloud copy"); }
-      else { await GH.push({v:3, items, ui:{tiers:ui.tiers, view:ui.view}, audit, history});
+      else { await GH.push({v:3, items, ui:{tiers:ui.tiers}, audit, history});
         toast("Connected — this device's copy is now the cloud copy"); }
       ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     }catch(e){
@@ -1361,7 +1305,7 @@ function restoreStockSheet(){
 
 /* ============================== wiring ============================== */
 async function persist(){
-  const data = {v:3, items:items, ui:{tiers:ui.tiers, view:ui.view}, audit:audit, history:history};
+  const data = {v:3, items:items, ui:{tiers:ui.tiers}, audit:audit, history:history};
   const ok = await Store.save(data);
   if (!ok) toast("Not saved — copy a backup");
   if (GH.connected){
@@ -1379,14 +1323,6 @@ document.addEventListener("click", e => {
     else if (ui.tiers.length >= 3){ toast("Three tiers is the limit — tap one off first"); return; }
     else ui.tiers.push(k);
     persist(); render(); return;
-  }
-  const v = e.target.closest("[data-view]");
-  if (v){ ui.view = v.dataset.view; persist(); render(); return; }
-  const fc = e.target.closest(".chip[data-f]");
-  if (fc){
-    const arr = ui.filters[fc.dataset.f], at = arr.indexOf(fc.dataset.v);
-    if (at > -1) arr.splice(at,1); else arr.push(fc.dataset.v);
-    render(); return;
   }
   const pip = e.target.closest(".pip[data-aid]");
   if (pip){
@@ -1423,10 +1359,6 @@ document.addEventListener("click", e => {
   if (e.target.closest("#stFinish")){ finishAudit(); return; }
   const it = e.target.closest("[data-id]");
   if (it){ editItem(it.dataset.id); return; }
-  if (e.target.closest("#btnFilters")){ ui.showFilters = !ui.showFilters; render(); return; }
-  if (e.target.closest("#btnClear")){
-    DIM_KEYS.forEach(k => ui.filters[k] = []); ui.q = ""; render(); return;
-  }
   if (e.target.closest("#btnAdd")){ editItem(null); return; }
   if (e.target.closest("#btnMore")){ ui.navExpanded = !ui.navExpanded; render(); return; }
   if (e.target.closest("#dCsv")){ dataOut(toCSV(), "CSV"); return; }
@@ -1461,10 +1393,7 @@ el("scrim").onclick = closeSheet;
   items = (arr && arr.length ? arr : SEED).map(normalise);
   if (saved && saved.audit) audit = saved.audit;
   if (saved && Array.isArray(saved.history)) history = saved.history;
-  if (saved && saved.ui){
-    if (Array.isArray(saved.ui.tiers)) ui.tiers = saved.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
-    if (saved.ui.view) ui.view = saved.ui.view;
-  }
+  if (saved && saved.ui && Array.isArray(saved.ui.tiers)) ui.tiers = saved.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
   if (history.length && !history[0].itemsSnapshot) history[0].itemsSnapshot = items.map(i => Object.assign({}, i));
   render();
 })();
