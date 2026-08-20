@@ -1026,10 +1026,13 @@ function screenSummary(){
 
   const LEG = "\u0000";
   h += '<section><p class="eyebrow">Cohort</p><table><tbody>';
-  uniq(list, i => i.acquired || LEG).sort((a,b) => (b === LEG ? "0" : b).localeCompare(a === LEG ? "0" : a)).forEach(k => {
-    const v = sum(list.filter(i => (i.acquired || LEG) === k));
-    h += '<tr><td class="k">' + esc(k === LEG ? "Legacy" : cohort(k)) + '</td><td class="n">' + v + '</td><td class="n" style="width:52px;color:var(--mute)">' + pct(v) + '</td></tr>';
-  });
+  uniq(list, i => i.acquired || LEG)
+    .sort((a,b) => sum(list.filter(i => (i.acquired || LEG) === b)) - sum(list.filter(i => (i.acquired || LEG) === a)) ||
+      (b === LEG ? "0" : b).localeCompare(a === LEG ? "0" : a))
+    .forEach(k => {
+      const v = sum(list.filter(i => (i.acquired || LEG) === k));
+      h += '<tr><td class="k">' + esc(k === LEG ? "Legacy" : cohort(k)) + '</td><td class="n">' + v + '</td><td class="n" style="width:52px;color:var(--mute)">' + pct(v) + '</td></tr>';
+    });
   h += '</tbody></table></section>';
 
   [["Brand", i => i.brand || "—"], ["Size", i => i.size || "—"]].forEach(pair => {
