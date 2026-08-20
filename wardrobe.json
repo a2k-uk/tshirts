@@ -372,10 +372,9 @@
  ],
  "ui": {
   "tiers": [
-   "cut",
-   "colour"
-  ],
-  "view": "list"
+   "colour",
+   "cut"
+  ]
  },
  "audit": null,
  "history": [
