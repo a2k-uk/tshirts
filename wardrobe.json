@@ -372,7 +372,8 @@
  ],
  "ui": {
   "tiers": [
-   "brand"
+   "brand",
+   "colour"
   ],
   "view": "list"
  },
