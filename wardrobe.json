@@ -371,10 +371,7 @@
   }
  ],
  "ui": {
-  "tiers": [
-   "colour",
-   "cut"
-  ],
+  "tiers": [],
   "view": "list"
  },
  "audit": null,
