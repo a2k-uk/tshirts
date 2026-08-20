@@ -451,7 +451,7 @@ function fabricLabel(i, familyGrouped){
 }
 function fabricFamily(f){
   const k = String(f||"").trim().toLowerCase();
-  if (!k) return "Other";
+  if (!k) return "";
   if (FABRIC_MAP[k]) return FABRIC_MAP[k];
   if (/^\d{1,3}\/\d{1,3}$/.test(k)) return "Cotton Blend";     // any ratio reads as a blend
   if (k.indexOf("blend") > -1) return "Cotton Blend";
@@ -502,7 +502,7 @@ const DIMS = {
   cut:    {label:"Cut",    key:i => i.neck || "—",        order:["Crew","Vee","Other"], suffix:{Crew:" neck", Vee:" neck"}},
   colour: {label:"Colour", key:i => family(i.colour),     swatch:true},
   brand:  {label:"Brand",  key:i => i.brand || "—"},
-  fabric: {label:"Fabric", key:i => i.ffam,               order:FABRIC_FAMILIES, mix:true},
+  fabric: {label:"Fabric", key:i => i.ffam || "—",         order:FABRIC_FAMILIES, mix:true},
   cohort: {label:"Cohort", key:i => cohort(i.acquired),   sort:i => i.acquired || "0000-00", desc:true},
   size:   {label:"Size",   key:i => i.size || "—",        order:["XS","S","M","L","XL","XXL","—"]}
 };
@@ -887,10 +887,10 @@ function screenWardrobe(){
   return h;
 }
 const REQUIRED = [
-  {k:"brand",  label:"Brand",   test:i => !!i.brand},
-  {k:"colour", label:"Colour",  test:i => !!i.colour},
-  {k:"fabric", label:"Fabric",  test:i => !!i.fabric},
-  {k:"size",   label:"Size",    test:i => !!i.size}
+  {k:"brand",  label:"Brand",         test:i => !!i.brand},
+  {k:"colour", label:"Colour",        test:i => !!i.colour},
+  {k:"ffam",   label:"Fabric family", test:i => !!i.ffam},
+  {k:"size",   label:"Size",          test:i => !!i.size}
 ];
 function gaps(i){ return REQUIRED.filter(r => !r.test(i)); }
 function incomplete(){
@@ -1009,10 +1009,10 @@ function screenSummary(){
   const pct = v => Math.round(v / total * 100) + "%";
 
   h += '<section><p class="eyebrow">Fabric</p><table><tbody>';
-  FABRIC_FAMILIES.slice()
-    .sort((a,b) => sum(list.filter(i => i.ffam === b)) - sum(list.filter(i => i.ffam === a)))
+  FABRIC_FAMILIES.concat(["Unrecorded"])
+    .sort((a,b) => sum(list.filter(i => (i.ffam || "Unrecorded") === b)) - sum(list.filter(i => (i.ffam || "Unrecorded") === a)))
     .forEach(ff => {
-      const g = list.filter(i => i.ffam === ff);
+      const g = list.filter(i => (i.ffam || "Unrecorded") === ff);
       if (!g.length) return;
       h += '<tr><td class="k">' + esc(ff) + '</td><td class="n">' + sum(g) + '</td><td class="n" style="width:52px;color:var(--mute)">' + pct(sum(g)) + '</td></tr>';
       uniq(g, i => i.fabric || "Unrecorded")
