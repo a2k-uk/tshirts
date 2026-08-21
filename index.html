@@ -327,10 +327,10 @@ const GH = {
     return new TextDecoder().decode(bytes);
   },
   async pull(){
-    const token = this.getToken(); if (!token) return null;
-    const res = await fetch(this.api() + "?ref=" + this.branch, {
-      headers:{ Authorization:"token " + token, Accept:"application/vnd.github+json" }
-    });
+    const token = this.getToken();
+    const headers = { Accept:"application/vnd.github+json" };
+    if (token) headers.Authorization = "token " + token;
+    const res = await fetch(this.api() + "?ref=" + this.branch, { headers });
     if (res.status === 404){ this.sha = null; return null; }
     if (!res.ok) throw new Error("read failed (" + res.status + ")");
     const j = await res.json();
@@ -357,7 +357,7 @@ const GH = {
     return true;
   }
 };
-let ghStatus = "", ghTimer = null, ghSyncing = false;
+let ghStatus = "", ghTimer = null, ghSyncing = false, ghViewingLive = false;
 async function ghPush(data){
   if (ghSyncing) return; ghSyncing = true;
   try{
@@ -930,8 +930,10 @@ function screenData(){
       '<div class="rowbtns"><button id="dGhSync">Sync now</button>' +
       '<button class="danger" id="dGhDisconnect">Disconnect</button></div>';
   } else {
-    h += '<p class="note" style="margin-top:0">Not connected — data only lives on this device. ' +
-      'Connect a GitHub personal access token to keep this synced across devices.</p>' +
+    h += '<p class="note" style="margin-top:0">' + (ghViewingLive
+      ? 'Viewing the live wardrobe from ' + esc(GH.owner + "/" + GH.repo) + ', read-only.'
+      : 'Not connected — showing this device’s saved copy.') +
+      ' Connect a GitHub personal access token to make changes that sync back here.</p>' +
       '<div class="rowbtns"><button id="dGhConnect">Connect to GitHub</button></div>';
   }
   h += '<div class="g1" style="margin-top:28px"><h2>Data operations</h2></div><div class="menu">' +
@@ -1383,14 +1385,12 @@ el("scrim").onclick = closeSheet;
 (async function start(){
   await Store.init();
   let saved = await Store.load();
-  if (GH.connected){
-    try{
-      const cloud = await GH.pull();
-      if (cloud) saved = cloud;
-      ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-    }catch(e){
-      ghStatus = "Could not reach GitHub — using this device's saved copy";
-    }
+  try{
+    const cloud = await GH.pull();
+    if (cloud){ saved = cloud; ghViewingLive = true; }
+    ghStatus = "Last synced " + new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }catch(e){
+    ghStatus = GH.connected ? "Could not reach GitHub — using this device's saved copy" : "";
   }
   const arr = Array.isArray(saved) ? saved : (saved && saved.items);
   items = (arr && arr.length ? arr : SEED).map(normalise);
