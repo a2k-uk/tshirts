@@ -371,10 +371,7 @@
   }
  ],
  "ui": {
-  "tiers": [
-   "brand",
-   "fabric"
-  ]
+  "tiers": []
  },
  "audit": null,
  "history": [
