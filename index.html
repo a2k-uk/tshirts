@@ -461,26 +461,6 @@ function fabricFamily(f){
 
 /* ============================== data ============================== */
 function uid(){ return Math.random().toString(36).slice(2,9); }
-const SEED = [
-  {neck:"Crew",brand:"Uniqlo",fabric:"Supima",colour:"Grey",size:"S",qty:1,acquired:"2026-07"},
-  {neck:"Crew",brand:"Uniqlo",fabric:"66/34",colour:"Grey",size:"S",qty:2,acquired:"2026-07"},
-  {neck:"Crew",brand:"Uniqlo",fabric:"66/34",colour:"Navy",size:"S",qty:2,acquired:"2026-07"},
-  {neck:"Crew",brand:"Uniqlo",fabric:"Supima",colour:"Grey",size:"S",qty:2,acquired:"2026-03"},
-  {neck:"Crew",brand:"Uniqlo",fabric:"Supima",colour:"Black",size:"S",qty:2,acquired:"2026-03"},
-  {neck:"Crew",brand:"Next",fabric:"60/40",colour:"Dark Grey",size:"M",fit:"Slim Fit",qty:1,acquired:"2026-03"},
-  {neck:"Crew",brand:"Next",fabric:"60/40",colour:"Light Grey",size:"M",fit:"Slim Fit",qty:1,acquired:"2026-03"},
-  {neck:"Crew",brand:"Uniqlo",fabric:"66/34",colour:"Black",size:"M",qty:2,acquired:""},
-  {neck:"Crew",brand:"Uniqlo",fabric:"66/34",colour:"Mid-Grey",size:"M",qty:2,acquired:""},
-  {neck:"Crew",brand:"Banana Rep",fabric:"Pima",colour:"Dark Grey",size:"XS",qty:1,acquired:""},
-  {neck:"Crew",brand:"Banana Rep",fabric:"Supima",colour:"Black",size:"XS",qty:1,acquired:""},
-  {neck:"Vee",brand:"Uniqlo",fabric:"66/34",colour:"Black",size:"M",qty:2,acquired:""},
-  {neck:"Vee",brand:"Banana Rep",fabric:"Supima",colour:"Grey",size:"S",qty:1,acquired:""},
-  {neck:"Vee",brand:"Banana Rep",fabric:"Supima",colour:"Dark Grey",size:"XS",qty:1,acquired:""},
-  {neck:"Vee",brand:"Banana Rep",fabric:"Cotton",colour:"Red",size:"S",qty:1,acquired:""},
-  {cat:"Pyjamas",neck:"Crew",brand:"Uniqlo",fabric:"66/34",colour:"Grey",qty:4,acquired:"",notes:"3 marked"},
-  {cat:"Pyjamas",neck:"Vee",brand:"Banana Rep",colour:"Blue",qty:2,acquired:""},
-  {cat:"Pyjamas",neck:"Other",brand:"Band shirts",colour:"Mixed",qty:4,acquired:""}
-];
 function normalise(x){
   const f = x.fabric || "";
   return { id:x.id || uid(), cat:x.cat === "Pyjamas" ? "Pyjamas" : "Everyday",
@@ -1393,7 +1373,7 @@ el("scrim").onclick = closeSheet;
     ghStatus = GH.connected ? "Could not reach GitHub — using this device's saved copy" : "";
   }
   const arr = Array.isArray(saved) ? saved : (saved && saved.items);
-  items = (arr && arr.length ? arr : SEED).map(normalise);
+  items = (arr || []).map(normalise);
   if (saved && saved.audit) audit = saved.audit;
   if (saved && Array.isArray(saved.history)) history = saved.history;
   if (saved && saved.ui && Array.isArray(saved.ui.tiers)) ui.tiers = saved.ui.tiers.filter(k => DIM_KEYS.indexOf(k) > -1).slice(0,3);
