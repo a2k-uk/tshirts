@@ -371,7 +371,9 @@
   }
  ],
  "ui": {
-  "tiers": []
+  "tiers": [
+   "brand"
+  ]
  },
  "audit": null,
  "history": [
