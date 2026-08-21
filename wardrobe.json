@@ -372,8 +372,8 @@
  ],
  "ui": {
   "tiers": [
-   "colour",
-   "brand"
+   "brand",
+   "fabric"
   ]
  },
  "audit": null,
