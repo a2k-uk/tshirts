@@ -373,7 +373,8 @@
  "ui": {
   "tiers": [
    "cut",
-   "colour"
+   "colour",
+   "brand"
   ]
  },
  "audit": null,
