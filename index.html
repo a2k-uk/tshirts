@@ -492,7 +492,7 @@ const DIM_KEYS = ["cut","colour","brand","fabric","cohort","size"];
 let items = [], audit = null, history = [];
 let ui = {
   screen:"wardrobe",                       // wardrobe | summary | pyjamas
-  tiers:["cut","colour"],
+  tiers:["colour","cut"],
   navExpanded:false,
   q:"", auditOutstanding:false, auditPyjamas:false
 };
@@ -557,12 +557,16 @@ function itemRow(i){
     '<span class="qty">' + i.qty + '</span></button>';
 }
 function itemsBlock(list, depth){
-  const sorted = list.slice().sort((a,b) =>
-    colourRank(a.colour) - colourRank(b.colour) ||
-    a.neck.localeCompare(b.neck) ||
-    (b.acquired || "0000-00").localeCompare(a.acquired || "0000-00") ||
-    a.brand.localeCompare(b.brand));
-  if (ui.screen === "stocktake")
+  const isStocktake = ui.screen === "stocktake";
+  const sorted = list.slice().sort(isStocktake
+    ? (a,b) => colourRank(a.colour) - colourRank(b.colour) ||
+        a.neck.localeCompare(b.neck) ||
+        (b.acquired || "0000-00").localeCompare(a.acquired || "0000-00") ||
+        a.brand.localeCompare(b.brand)
+    : (a,b) => b.qty - a.qty ||
+        a.brand.localeCompare(b.brand) ||
+        (b.acquired || "0000-00").localeCompare(a.acquired || "0000-00"));
+  if (isStocktake)
     return '<div' + (depth ? ' class="d' + (depth+1) + '"' : '') + '>' + sorted.map(auditRow).join("") + '</div>';
   return '<div' + (depth ? ' class="d' + (depth+1) + '"' : '') + '>' + sorted.map(itemRow).join("") + '</div>';
 }
