@@ -372,8 +372,7 @@
  ],
  "ui": {
   "tiers": [
-   "cut",
-   "colour"
+   "cohort"
   ]
  },
  "audit": null,
