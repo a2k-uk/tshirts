@@ -371,7 +371,9 @@
   }
  ],
  "ui": {
-  "tiers": []
+  "tiers": [
+   "cut"
+  ]
  },
  "audit": null,
  "history": [
